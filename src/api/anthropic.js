@@ -1,20 +1,24 @@
-const API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY
 const MODEL = 'claude-sonnet-4-0'
-const API_URL = 'https://api.anthropic.com/v1/messages'
+
+// In dev, call Anthropic directly (requires VITE_ANTHROPIC_API_KEY + browser flag).
+// In production, call the local proxy server which holds the key server-side.
+const IS_DEV = import.meta.env.DEV
+const API_URL = IS_DEV ? 'https://api.anthropic.com/v1/messages' : '/api/anthropic'
 
 async function callAnthropic(prompt, maxTokens = 512) {
-  if (!API_KEY) {
-    throw new Error('VITE_ANTHROPIC_API_KEY is not set. Copy .env.example to .env and add your key.')
+  const headers = { 'Content-Type': 'application/json' }
+
+  if (IS_DEV) {
+    const key = import.meta.env.VITE_ANTHROPIC_API_KEY
+    if (!key) throw new Error('VITE_ANTHROPIC_API_KEY is not set. Copy .env.example to .env and add your key.')
+    headers['x-api-key'] = key
+    headers['anthropic-version'] = '2023-06-01'
+    headers['anthropic-dangerous-allow-browser'] = 'true'
   }
 
   const response = await fetch(API_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': API_KEY,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-allow-browser': 'true',
-    },
+    headers,
     body: JSON.stringify({
       model: MODEL,
       max_tokens: maxTokens,
