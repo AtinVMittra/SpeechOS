@@ -10,6 +10,11 @@ const PORT = process.env.PORT || 4173
 
 app.use(express.json())
 
+// Debug: check env vars are loaded (remove after confirming)
+app.get('/api/health', (req, res) => {
+  res.json({ hasKey: !!process.env.ANTHROPIC_API_KEY })
+})
+
 // Proxy endpoint for Anthropic API
 app.post('/api/anthropic', async (req, res) => {
   const apiKey = process.env.ANTHROPIC_API_KEY
