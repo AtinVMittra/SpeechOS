@@ -107,8 +107,8 @@ export default function Dashboard() {
           {/* Bottom actions */}
           <div className="p-3 border-t border-slate-100 space-y-2">
             <button
-              onClick={() => { setSelectedPatient(null); setActivePanel('generator') }}
-              className={`w-full flex items-center gap-2 text-sm font-medium px-3 py-2.5 rounded-lg transition-colors ${activePanel === 'generator' && !selectedPatient ? 'bg-blue-600 text-white' : 'text-blue-600 hover:bg-blue-50 border border-blue-200'}`}
+              onClick={() => setActivePanel('generator')}
+              className={`w-full flex items-center gap-2 text-sm font-medium px-3 py-2.5 rounded-lg transition-colors ${activePanel === 'generator' ? 'bg-blue-600 text-white' : 'text-blue-600 hover:bg-blue-50 border border-blue-200'}`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -116,7 +116,7 @@ export default function Dashboard() {
               Exercise Plan Generator
             </button>
             <button
-              onClick={() => { setSelectedPatient(null); setActivePanel('rag') }}
+              onClick={() => setActivePanel('rag')}
               className={`w-full flex items-center gap-2 text-sm font-medium px-3 py-2.5 rounded-lg transition-colors ${activePanel === 'rag' ? 'bg-purple-600 text-white' : 'text-purple-600 hover:bg-purple-50 border border-purple-200'}`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -128,10 +128,51 @@ export default function Dashboard() {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto">
-          {!selectedPatient && activePanel !== 'generator' && activePanel !== 'rag' ? (
-            /* Empty state */
-            <div className="h-full flex flex-col items-center justify-center text-center p-12">
+        <main className="flex-1 flex flex-col overflow-hidden">
+          {/* Sticky tab bar — always visible */}
+          <div className="shrink-0 bg-white border-b border-slate-200 px-6 py-3">
+            <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 w-fit">
+              <button
+                onClick={() => setActivePanel('brief')}
+                disabled={!selectedPatient}
+                className={`text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${activePanel === 'brief' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Pre-Session Brief
+              </button>
+              <button
+                onClick={() => setActivePanel('generator')}
+                className={`text-sm font-medium px-4 py-2 rounded-lg transition-colors ${activePanel === 'generator' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Exercise Generator
+              </button>
+              <button
+                onClick={() => setActivePanel('rag')}
+                className={`text-sm font-medium px-4 py-2 rounded-lg transition-colors ${activePanel === 'rag' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Clinical RAG
+              </button>
+            </div>
+          </div>
+
+          {/* Panel content */}
+          {activePanel === 'rag' ? (
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <ClinicalRAG />
+            </div>
+          ) : activePanel === 'generator' ? (
+            <div className="flex-1 overflow-y-auto">
+              <div className="max-w-2xl mx-auto p-8">
+                <ExercisePlanGenerator selectedPatientId={selectedPatient?.id} />
+              </div>
+            </div>
+          ) : selectedPatient ? (
+            <div className="flex-1 overflow-y-auto">
+              <div className="max-w-2xl mx-auto p-8">
+                <PatientBrief patient={selectedPatient} />
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-12">
               <div className="w-16 h-16 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center mb-4">
                 <svg className="w-8 h-8 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -139,47 +180,6 @@ export default function Dashboard() {
               </div>
               <h3 className="text-base font-semibold text-slate-700 mb-1">Select a patient</h3>
               <p className="text-sm text-slate-400 max-w-xs">Choose a patient from your caseload to view their pre-session brief, or use the Exercise Plan Generator to create a new home practice plan.</p>
-            </div>
-          ) : activePanel === 'rag' ? (
-            <div className="h-full flex flex-col overflow-hidden">
-              <ClinicalRAG />
-            </div>
-          ) : activePanel === 'generator' ? (
-            <div className="max-w-2xl mx-auto p-8">
-              <ExercisePlanGenerator selectedPatientId={selectedPatient?.id} />
-            </div>
-          ) : (
-            /* Patient brief + tabs */
-            <div className="max-w-2xl mx-auto p-8">
-              {/* Tab switcher */}
-              <div className="flex items-center gap-1 mb-6 bg-slate-100 rounded-xl p-1 w-fit">
-                <button
-                  onClick={() => setActivePanel('brief')}
-                  className={`text-sm font-medium px-4 py-2 rounded-lg transition-colors ${activePanel === 'brief' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                  Pre-Session Brief
-                </button>
-                <button
-                  onClick={() => setActivePanel('generator')}
-                  className={`text-sm font-medium px-4 py-2 rounded-lg transition-colors ${activePanel === 'generator' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                  Exercise Generator
-                </button>
-                <button
-                  onClick={() => setActivePanel('rag')}
-                  className={`text-sm font-medium px-4 py-2 rounded-lg transition-colors ${activePanel === 'rag' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                  Clinical RAG
-                </button>
-              </div>
-
-              {activePanel === 'brief' ? (
-                <PatientBrief patient={selectedPatient} />
-              ) : activePanel === 'rag' ? (
-                <ClinicalRAG />
-              ) : (
-                <ExercisePlanGenerator selectedPatientId={selectedPatient?.id} />
-              )}
             </div>
           )}
         </main>
