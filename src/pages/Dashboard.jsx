@@ -65,7 +65,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="h-screen bg-slate-50 flex flex-col overflow-hidden">
       {/* Top Nav */}
       <header className="h-14 bg-white border-b border-slate-200 flex items-center px-6 shrink-0 z-10">
         <div className="flex items-center gap-3">
