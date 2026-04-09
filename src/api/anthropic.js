@@ -43,8 +43,9 @@ Condition: ${patient.condition}
 Weekly home practice compliance: ${patient.compliance}%
 Current streak: ${patient.streak} day(s)
 Voice samples recorded: ${patient.voiceSamples}
-Exercises flagged as hard by caregiver: ${patient.flaggedExercises.join(', ')}
-Most recent session notes: "${patient.sessionNotes}"
+Exercises flagged as hard: ${patient.flaggedExercises.join(', ')}
+Most recent session notes: "${patient.sessionNotes}"${patient.lastCheckIn ? `
+Last check-in (${patient.lastCheckIn.date}): Patient rated the session ${patient.lastCheckIn.rating}/5. Hard exercises reported: ${patient.lastCheckIn.hardExercises.join(', ') || 'none'}. Patient questions: ${patient.lastCheckIn.questions?.join('; ') || 'none'}. Topics they want to explore: ${patient.lastCheckIn.topicsToExplore || 'none'}.` : ''}
 
 Write only the brief — no headers, no bullet points, no preamble.`
 

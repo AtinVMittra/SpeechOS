@@ -65,14 +65,14 @@ export default function PatientBrief({ patient }) {
           <p className="text-sm text-slate-500 mt-0.5">{patient.condition} · Age {patient.age}</p>
         </div>
         <Link
-          to={`/caregiver/${patient.id}`}
+          to={`/patient/${patient.id}`}
           target="_blank"
           className="inline-flex items-center gap-2 text-sm font-medium text-teal-600 hover:text-teal-700 border border-teal-200 hover:border-teal-300 bg-teal-50 hover:bg-teal-100 px-3 py-1.5 rounded-lg transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
           </svg>
-          Caregiver View
+          Patient View
         </Link>
       </div>
 
@@ -141,6 +141,56 @@ export default function PatientBrief({ patient }) {
           </div>
         </div>
       )}
+
+      {/* Patient Questions from last check-in */}
+      {patient.patientQuestions && patient.patientQuestions.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+            <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Patient Questions
+            <span className="text-xs font-normal text-blue-400">(from last check-in)</span>
+          </h3>
+          <div className="space-y-2">
+            {patient.patientQuestions.map((q, i) => (
+              <div key={i} className="flex items-start gap-2 text-sm text-blue-800 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                <span className="text-blue-400 shrink-0 mt-0.5">?</span>
+                {q}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Topics to Cover */}
+      {(() => {
+        const topics = [
+          ...patient.flaggedExercises.map(e => `Review flagged exercise: ${e}`),
+          ...(patient.lastCheckIn?.topicsToExplore ? [`Patient wants to explore: ${patient.lastCheckIn.topicsToExplore}`] : []),
+        ]
+        if (topics.length === 0) return null
+        return (
+          <div>
+            <h3 className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+              <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+              </svg>
+              Topics to Cover
+            </h3>
+            <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3 space-y-2">
+              {topics.map((topic, i) => (
+                <div key={i} className="flex items-start gap-2 text-sm text-indigo-800">
+                  <svg className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {topic}
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Compliance Trend */}
       <div>

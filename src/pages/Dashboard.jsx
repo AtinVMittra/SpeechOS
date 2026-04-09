@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { patients } from '../data/mockData.js'
+import { usePatientData } from '../context/PatientDataContext.jsx'
 import PatientBrief from '../components/PatientBrief.jsx'
 import ExercisePlanGenerator from '../components/ExercisePlanGenerator.jsx'
 import ClinicalRAG from '../components/ClinicalRAG.jsx'
@@ -56,11 +56,14 @@ function PatientRow({ patient, isSelected, onClick }) {
 }
 
 export default function Dashboard() {
-  const [selectedPatient, setSelectedPatient] = useState(null)
+  const { patientData } = usePatientData()
+  const [selectedPatientId, setSelectedPatientId] = useState(null)
   const [activePanel, setActivePanel] = useState('brief') // 'brief' | 'generator'
 
+  const selectedPatient = patientData.find(p => p.id === selectedPatientId) || null
+
   function handleSelectPatient(patient) {
-    setSelectedPatient(patient)
+    setSelectedPatientId(patient.id)
     setActivePanel('brief')
   }
 
@@ -91,14 +94,14 @@ export default function Dashboard() {
         <aside className="w-72 bg-white border-r border-slate-200 flex flex-col shrink-0">
           <div className="px-4 py-3 border-b border-slate-100">
             <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Caseload</h2>
-            <p className="text-xs text-slate-400 mt-0.5">{patients.length} active patients</p>
+            <p className="text-xs text-slate-400 mt-0.5">{patientData.length} active patients</p>
           </div>
           <div className="flex-1 overflow-y-auto scrollbar-thin">
-            {patients.map(p => (
+            {patientData.map(p => (
               <PatientRow
                 key={p.id}
                 patient={p}
-                isSelected={selectedPatient?.id === p.id}
+                isSelected={selectedPatientId === p.id}
                 onClick={() => handleSelectPatient(p)}
               />
             ))}
