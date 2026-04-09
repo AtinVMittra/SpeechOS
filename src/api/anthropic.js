@@ -52,6 +52,73 @@ Write only the brief — no headers, no bullet points, no preamble.`
   return callAnthropic(prompt, 256)
 }
 
+export async function generateLessonScript(patient) {
+  const exerciseList = patient.exercises
+    .map((ex, i) => `${i + 1}. "${ex.title}": ${ex.instruction}`)
+    .join('\n')
+
+  const flaggedNote = patient.flaggedExercises.length > 0
+    ? `Flagged as challenging in recent sessions: ${patient.flaggedExercises.join(', ')}.`
+    : ''
+
+  const checkInNote = patient.lastCheckIn
+    ? `At their last check-in (${patient.lastCheckIn.date}), they rated the session ${patient.lastCheckIn.rating}/5. Hard exercises: ${patient.lastCheckIn.hardExercises.join(', ') || 'none'}.`
+    : ''
+
+  const prompt = `You are a warm, encouraging virtual speech-language pathologist preparing a spoken lesson for a patient doing home practice.
+
+Write a lesson script for ${patient.name}, age ${patient.age}, who has ${patient.condition}.
+They are currently on a ${patient.streak}-day streak with ${patient.xp} XP earned.
+${flaggedNote}
+${checkInNote}
+
+Today's exercises:
+${exerciseList}
+
+Return ONLY a valid JSON object with this exact structure — no markdown, no explanation:
+{
+  "patientName": "<first name only>",
+  "greeting": "<1 warm sentence welcoming them>",
+  "todaysFocus": "<1 sentence summarizing today's exercises by name>",
+  "segments": [
+    {
+      "id": "intro",
+      "speakerText": "<30-40 words: warm welcome, mention their streak if greater than 0, set a positive tone>",
+      "displayTitle": "Welcome"
+    },
+    {
+      "id": "exercise-1",
+      "speakerText": "<40-60 words: name the exercise, explain it in plain language, add one word of encouragement>",
+      "displayTitle": "Exercise 1: <exercise title>"
+    },
+    {
+      "id": "tips",
+      "speakerText": "<30-40 words: 2 practical tips for today based on their condition${flaggedNote ? ' and flagged exercises' : ''}>",
+      "displayTitle": "Tips for Today"
+    },
+    {
+      "id": "closing",
+      "speakerText": "<20-30 words: motivating close, reference streak or XP if notable, invite them to begin>",
+      "displayTitle": "Let's Begin"
+    }
+  ],
+  "fullAudioScript": "<all speakerText fields concatenated in order, separated by a single space>",
+  "estimatedDurationSeconds": <integer, estimate at 130 words per minute>
+}
+
+Important: include one "exercise-N" segment per exercise (exercise-1, exercise-2, etc.) between the intro and tips segments. Keep fullAudioScript under 4500 characters total.`
+
+  const text = await callAnthropic(prompt, 1200)
+  const match = text.match(/\{[\s\S]*\}/)
+  if (!match) throw new Error('Could not parse lesson script from AI response.')
+
+  const script = JSON.parse(match[0])
+  if (!script.segments || !Array.isArray(script.segments)) {
+    throw new Error('Invalid lesson script format returned.')
+  }
+  return script
+}
+
 export async function generateExercisePlan(sessionNote) {
   const prompt = `You are a speech-language pathologist creating a structured home practice plan. Based on the session note below, generate exactly 3 daily exercises for the patient's caregiver to complete at home between sessions.
 

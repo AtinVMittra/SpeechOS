@@ -28,6 +28,11 @@
   50%       { transform: scale(1.15); }
 }
 
+@keyframes loadingPulse {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 1.0; }
+}
+
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;
