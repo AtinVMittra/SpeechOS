@@ -92,7 +92,7 @@ export default function PatientHome() {
                     </div>
                   )}
                   <button
-                    onClick={() => navigate(`/patient/${patientId}/session`)}
+                    onClick={() => navigate(sessionCompleted ? `/patient/${patientId}/session` : `/patient/${patientId}/lesson`)}
                     className={`mt-3 w-full text-sm font-semibold py-2.5 px-4 rounded-xl transition-colors ${
                       sessionCompleted
                         ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'

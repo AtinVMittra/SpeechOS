@@ -40,6 +40,50 @@ app.post('/api/anthropic', async (req, res) => {
   }
 })
 
+// Proxy endpoint for HeyGen video generation
+app.post('/api/heygen/v2/video/generate', async (req, res) => {
+  const apiKey = process.env.HEYGEN_API_KEY
+  if (!apiKey) {
+    return res.status(500).json({ error: 'HEYGEN_API_KEY is not set on the server.' })
+  }
+  try {
+    const response = await fetch('https://api.heygen.com/v2/video/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Api-Key': apiKey,
+      },
+      body: JSON.stringify(req.body),
+    })
+    const data = await response.json()
+    res.status(response.status).json(data)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// Proxy endpoint for HeyGen video status polling
+app.get('/api/heygen/v1/video_status.get', async (req, res) => {
+  const apiKey = process.env.HEYGEN_API_KEY
+  if (!apiKey) {
+    return res.status(500).json({ error: 'HEYGEN_API_KEY is not set on the server.' })
+  }
+  const { video_id } = req.query
+  if (!video_id) {
+    return res.status(400).json({ error: 'video_id query param is required.' })
+  }
+  try {
+    const response = await fetch(
+      `https://api.heygen.com/v1/video_status.get?video_id=${encodeURIComponent(video_id)}`,
+      { headers: { 'X-Api-Key': apiKey } }
+    )
+    const data = await response.json()
+    res.status(response.status).json(data)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
 // Serve built static files
 app.use(express.static(join(__dirname, 'dist')))
 

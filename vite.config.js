@@ -6,4 +6,24 @@ export default defineConfig({
   preview: {
     allowedHosts: true,
   },
+  server: {
+    proxy: {
+      '/api/elevenlabs': {
+        target: 'https://api.elevenlabs.io',
+        changeOrigin: true,
+        rewrite: path => path.replace(/^\/api\/elevenlabs/, ''),
+      },
+      '/api/heygen': {
+        target: 'https://api.heygen.com',
+        changeOrigin: true,
+        rewrite: path => path.replace(/^\/api\/heygen/, ''),
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq) => {
+            const key = process.env.HEYGEN_API_KEY
+            if (key) proxyReq.setHeader('X-Api-Key', key)
+          })
+        },
+      },
+    },
+  },
 })

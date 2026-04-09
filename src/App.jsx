@@ -5,6 +5,7 @@ import CaregiverView from './pages/CaregiverView.jsx'
 import PatientHome from './pages/PatientHome.jsx'
 import SessionPlayer from './pages/SessionPlayer.jsx'
 import CheckIn from './pages/CheckIn.jsx'
+import LessonPlayer from './pages/LessonPlayer.jsx'
 
 function CaregiverRedirect() {
   const { patientId } = useParams()
@@ -20,6 +21,7 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/caregiver/:patientId" element={<CaregiverRedirect />} />
           <Route path="/patient/:patientId" element={<PatientHome />} />
+          <Route path="/patient/:patientId/lesson" element={<LessonPlayer />} />
           <Route path="/patient/:patientId/session" element={<SessionPlayer />} />
           <Route path="/patient/:patientId/checkin" element={<CheckIn />} />
         </Routes>
