@@ -39,7 +39,7 @@ async function createDailyRoom() {
   return data.url
 }
 
-function DailyVideo({ onCallStarted }) {
+function DailyVideo({ onCallStarted, onRoomCreated, onCallEnded }) {
   const [roomUrl, setRoomUrl] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -50,6 +50,7 @@ function DailyVideo({ onCallStarted }) {
     try {
       const url = await createDailyRoom()
       setRoomUrl(url)
+      onRoomCreated?.(url)
       onCallStarted?.()
     } catch (err) {
       setError(err.message)
@@ -60,6 +61,7 @@ function DailyVideo({ onCallStarted }) {
 
   function handleEnd() {
     setRoomUrl(null)
+    onCallEnded?.()
   }
 
   if (roomUrl) {
@@ -122,8 +124,14 @@ function DailyVideo({ onCallStarted }) {
 const GAME_TYPE_LABEL = { 'flashcard': 'Flashcard Drill', 'minimal-pairs': 'Minimal Pairs', 'word-sort': 'Word Sort' }
 const GAME_TYPE_COLOR = { 'flashcard': 'bg-teal-100 text-teal-700', 'minimal-pairs': 'bg-blue-100 text-blue-700', 'word-sort': 'bg-violet-100 text-violet-700' }
 
-function ExercisePanel({ exercises }) {
+function ExercisePanel({ exercises, onExerciseChange }) {
   const [current, setCurrent] = useState(0)
+
+  useEffect(() => {
+    if (exercises && exercises.length > 0) {
+      onExerciseChange?.(exercises[current])
+    }
+  }, [current, exercises])
 
   if (!exercises || exercises.length === 0) return (
     <div className="flex flex-col items-center justify-center h-full text-center p-6 gap-2">
@@ -265,6 +273,29 @@ export default function SessionView({ patient, onNext }) {
   const [structureError, setStructureError] = useState(null)
   const [soapSaved, setSoapSaved] = useState(false)
   const transcriptRef = useRef(null)
+  const channelRef = useRef(null)
+
+  useEffect(() => {
+    channelRef.current = new BroadcastChannel('speechos-session')
+    return () => channelRef.current?.close()
+  }, [])
+
+  function broadcastExercise(exercise) {
+    if (!patient) return
+    channelRef.current?.postMessage({ type: 'exercise_changed', exercise, patientId: patient.id })
+  }
+
+  function broadcastRoomCreated(url) {
+    if (!patient) return
+    channelRef.current?.postMessage({ type: 'room_created', url, patientId: patient.id })
+    localStorage.setItem(`speechos_room_${patient.id}`, url)
+  }
+
+  function broadcastCallEnded() {
+    if (!patient) return
+    channelRef.current?.postMessage({ type: 'session_ended', patientId: patient.id })
+    localStorage.removeItem(`speechos_room_${patient.id}`)
+  }
 
   useEffect(() => {
     if (transcriptRef.current) transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight
@@ -326,10 +357,14 @@ export default function SessionView({ patient, onNext }) {
       {/* Video + exercises */}
       <div className="grid grid-cols-5 gap-4">
         <div className="col-span-3">
-          <DailyVideo onCallStarted={start} />
+          <DailyVideo
+            onCallStarted={start}
+            onRoomCreated={broadcastRoomCreated}
+            onCallEnded={broadcastCallEnded}
+          />
         </div>
         <div className="col-span-2 border border-slate-200 rounded-2xl overflow-hidden flex flex-col bg-white" style={{ minHeight: '220px' }}>
-          <ExercisePanel exercises={exercises} />
+          <ExercisePanel exercises={exercises} onExerciseChange={broadcastExercise} />
         </div>
       </div>
 

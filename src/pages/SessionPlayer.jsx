@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { usePatientData } from '../context/PatientDataContext.jsx'
 import VoiceQuiz from '../components/VoiceQuiz.jsx'
 import XpPopup from '../components/XpPopup.jsx'
@@ -12,6 +12,108 @@ const MOTIVATIONAL_MESSAGES = [
   'Fantastic effort! 🔥',
   'You\'re a star! ⭐',
 ]
+
+// ─── Live Session Panel ───────────────────────────────────────────────────────
+
+const GAME_TYPE_LABEL = {
+  'flashcard': 'Flashcard Drill',
+  'minimal-pairs': 'Minimal Pairs',
+  'word-sort': 'Word Sort',
+}
+
+function LiveSessionPanel({ exercise }) {
+  if (!exercise) return null
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-indigo-100 overflow-hidden">
+      <div className="bg-gradient-to-r from-indigo-500 to-purple-500 px-4 py-2.5 flex items-center gap-2">
+        <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+        <p className="text-white text-xs font-semibold">Live with Therapist</p>
+        {exercise.gameType && (
+          <span className="ml-auto text-indigo-200 text-xs">{GAME_TYPE_LABEL[exercise.gameType] || exercise.gameType}</span>
+        )}
+      </div>
+
+      <div className="p-4 space-y-3">
+        <p className="text-sm font-semibold text-slate-800">{exercise.title}</p>
+
+        {exercise.gameType === 'minimal-pairs' && exercise.pairs?.length > 0 && (
+          <div>
+            <p className="text-xs text-slate-400 mb-2">Listen — which word do you hear?</p>
+            <div className="flex gap-3">
+              {[exercise.pairs[0].target, exercise.pairs[0].foil].map((word) => (
+                <div key={word} className="flex-1 bg-indigo-50 border border-indigo-100 rounded-xl py-3 text-center">
+                  <p className="text-base font-bold text-indigo-700">{word}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {exercise.gameType === 'flashcard' && exercise.cards?.length > 0 && (
+          <div>
+            <p className="text-xs text-slate-400 mb-2">Words your therapist is drilling:</p>
+            <div className="flex flex-wrap gap-2">
+              {exercise.cards.slice(0, 6).map((card) => (
+                <span key={card.word} className="bg-teal-50 border border-teal-100 text-teal-700 text-sm font-medium px-3 py-1 rounded-full">
+                  {card.emoji} {card.word}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {exercise.gameType === 'word-sort' && exercise.categories?.length === 2 && (
+          <div>
+            <p className="text-xs text-slate-400 mb-2">Sorting words into:</p>
+            <div className="flex gap-3">
+              {exercise.categories.map((cat) => (
+                <div key={cat} className="flex-1 bg-violet-50 border border-violet-100 rounded-xl py-2.5 text-center">
+                  <p className="text-sm font-bold text-violet-700">{cat}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {exercise.instructions && (
+          <p className="text-xs text-slate-500 leading-relaxed">{exercise.instructions}</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Video Call Panel ─────────────────────────────────────────────────────────
+
+function VideoCallPanel({ roomUrl, onClose }) {
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+      <div className="bg-slate-900 px-4 py-2.5 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <p className="text-white text-xs font-semibold">Video Call — Live Session</p>
+        </div>
+        <button
+          onClick={onClose}
+          className="text-slate-400 hover:text-white transition-colors text-xs"
+        >
+          Minimize ↑
+        </button>
+      </div>
+      <div style={{ aspectRatio: '16/9' }}>
+        <iframe
+          src={roomUrl}
+          allow="camera; microphone; fullscreen; speaker; display-capture; autoplay"
+          className="w-full h-full border-0"
+          title="Live session video call"
+        />
+      </div>
+    </div>
+  )
+}
+
+// ─── Exercise components ──────────────────────────────────────────────────────
 
 function VideoExercise({ exercise, onComplete }) {
   const [watched, setWatched] = useState(false)
@@ -91,7 +193,6 @@ function StandardExercise({ exercise, onComplete }) {
         <p className="text-sm text-slate-700 leading-relaxed">{exercise.instruction}</p>
       </div>
 
-      {/* Timer bar */}
       {running && (
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs text-slate-500">
@@ -133,13 +234,18 @@ function StandardExercise({ exercise, onComplete }) {
   )
 }
 
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export default function SessionPlayer() {
   const { patientId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { getPatientById } = usePatientData()
 
   const patient = getPatientById(patientId)
-  const exercises = patient?.exercises || []
+  const bonusExercises = location.state?.bonusExercises
+  const exercises = bonusExercises || patient?.exercises || []
+  const isBonusMode = !!bonusExercises
 
   const [step, setStep] = useState(0)
   const [xpEarned, setXpEarned] = useState(0)
@@ -149,6 +255,33 @@ export default function SessionPlayer() {
   const [completedIds, setCompletedIds] = useState([])
   const [showInterstitial, setShowInterstitial] = useState(false)
   const [interstitialMsg, setInterstitialMsg] = useState('')
+
+  // Live session state — fed by BroadcastChannel from the therapist window
+  const [liveExercise, setLiveExercise] = useState(null)
+  const [roomUrl, setRoomUrl] = useState(() => localStorage.getItem(`speechos_room_${patientId}`) || null)
+  const [showVideoCall, setShowVideoCall] = useState(false)
+
+  useEffect(() => {
+    const ch = new BroadcastChannel('speechos-session')
+    ch.onmessage = (e) => {
+      if (e.data.patientId !== patientId) return
+      if (e.data.type === 'exercise_changed') {
+        setLiveExercise(e.data.exercise)
+      }
+      if (e.data.type === 'room_created') {
+        const url = e.data.url
+        setRoomUrl(url)
+        localStorage.setItem(`speechos_room_${patientId}`, url)
+      }
+      if (e.data.type === 'session_ended') {
+        setRoomUrl(null)
+        setLiveExercise(null)
+        setShowVideoCall(false)
+        localStorage.removeItem(`speechos_room_${patientId}`)
+      }
+    }
+    return () => ch.close()
+  }, [patientId])
 
   if (!patient) {
     return (
@@ -211,10 +344,23 @@ export default function SessionPlayer() {
             </svg>
           </button>
           <div className="flex-1">
-            <p className="text-xs text-slate-400">Exercise {step + 1} of {totalSteps}</p>
+            <p className="text-xs text-slate-400">
+              {isBonusMode ? '⚡ Bonus Practice · ' : ''}Exercise {step + 1} of {totalSteps}
+            </p>
             <p className="text-sm font-semibold text-slate-800 truncate">{currentExercise?.title}</p>
           </div>
-          <div className="text-sm font-bold text-teal-600">⚡{xpEarned} XP</div>
+          <div className="flex items-center gap-2">
+            {roomUrl && !showVideoCall && (
+              <button
+                onClick={() => setShowVideoCall(true)}
+                className="flex items-center gap-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-full transition-colors"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                Join Call
+              </button>
+            )}
+            <div className="text-sm font-bold text-teal-600">⚡{xpEarned} XP</div>
+          </div>
         </div>
 
         {/* Progress bar segments */}
@@ -234,7 +380,7 @@ export default function SessionPlayer() {
         </div>
 
         {/* Exercise content */}
-        <div className="flex-1 overflow-y-auto px-5 py-5 relative">
+        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4 relative">
 
           {/* XP Popup */}
           {showXpPopup && (
@@ -251,6 +397,16 @@ export default function SessionPlayer() {
             </div>
           )}
 
+          {/* Video call panel */}
+          {showVideoCall && roomUrl && (
+            <VideoCallPanel roomUrl={roomUrl} onClose={() => setShowVideoCall(false)} />
+          )}
+
+          {/* Live session panel — shown when therapist is running a game */}
+          {liveExercise && (
+            <LiveSessionPanel exercise={liveExercise} />
+          )}
+
           {/* Exercise type card */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 space-y-4">
             {/* Type badge */}
@@ -264,39 +420,32 @@ export default function SessionPlayer() {
               }`}>
                 {currentExercise?.type === 'video' ? '🎬 Video' : currentExercise?.type === 'quiz' ? '🎤 Voice Quiz' : '📋 Exercise'}
               </span>
+              {isBonusMode && (
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-full border bg-amber-50 text-amber-600 border-amber-100">
+                  ⚡ Bonus
+                </span>
+              )}
             </div>
 
             {/* Render by type */}
             {currentExercise?.type === 'video' && (
               <VideoExercise
                 exercise={currentExercise}
-                onComplete={(xp) => {
-                  if (!isCompleted) {
-                    handleExerciseComplete(xp)
-                  }
-                }}
+                onComplete={(xp) => { if (!isCompleted) handleExerciseComplete(xp) }}
               />
             )}
 
             {currentExercise?.type === 'exercise' && (
               <StandardExercise
                 exercise={currentExercise}
-                onComplete={(xp) => {
-                  if (!isCompleted) {
-                    handleExerciseComplete(xp)
-                  }
-                }}
+                onComplete={(xp) => { if (!isCompleted) handleExerciseComplete(xp) }}
               />
             )}
 
             {currentExercise?.type === 'quiz' && (
               <VoiceQuiz
                 targetWord={currentExercise.targetWord || currentExercise.title}
-                onGrade={(grade, xp) => {
-                  if (!isCompleted) {
-                    handleExerciseComplete(xp)
-                  }
-                }}
+                onGrade={(grade, xp) => { if (!isCompleted) handleExerciseComplete(xp) }}
               />
             )}
           </div>
@@ -305,7 +454,7 @@ export default function SessionPlayer() {
           {isCompleted && (
             <button
               onClick={advanceStep}
-              className="mt-4 w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold text-sm py-3.5 rounded-2xl transition-colors"
+              className="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold text-sm py-3.5 rounded-2xl transition-colors"
             >
               {step + 1 >= totalSteps ? 'Finish Session 🎉' : 'Next Exercise →'}
             </button>

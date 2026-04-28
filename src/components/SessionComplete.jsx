@@ -1,4 +1,7 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { usePatientData } from '../context/PatientDataContext.jsx'
+import { generateBonusExercises } from '../api/anthropic.js'
 
 const CONFETTI_COLORS = ['#0d9488', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#3b82f6', '#ec4899']
 
@@ -23,6 +26,23 @@ function Confetti() {
 
 export default function SessionComplete({ patientId, totalXp, badgeUnlocked, completedExercises }) {
   const navigate = useNavigate()
+  const { getPatientById } = usePatientData()
+  const [generatingBonus, setGeneratingBonus] = useState(false)
+  const [bonusError, setBonusError] = useState(null)
+
+  async function handleKeepPracticing() {
+    const patient = getPatientById(patientId)
+    if (!patient) return
+    setGeneratingBonus(true)
+    setBonusError(null)
+    try {
+      const bonus = await generateBonusExercises(patient, completedExercises)
+      navigate(`/patient/${patientId}/session`, { state: { bonusExercises: bonus } })
+    } catch (err) {
+      setBonusError(err.message)
+      setGeneratingBonus(false)
+    }
+  }
 
   return (
     <div className="fixed inset-0 bg-gradient-to-b from-teal-500 to-emerald-600 flex flex-col items-center justify-center z-40 text-center px-6">
@@ -68,11 +88,35 @@ export default function SessionComplete({ patientId, totalXp, badgeUnlocked, com
           >
             Submit Check-In for Therapist →
           </button>
+
+          {/* Keep Practicing */}
+          <button
+            onClick={handleKeepPracticing}
+            disabled={generatingBonus}
+            className="w-full bg-white/20 text-white font-semibold text-sm py-3.5 rounded-2xl hover:bg-white/30 transition-colors border border-white/30 flex items-center justify-center gap-2 disabled:opacity-70"
+          >
+            {generatingBonus ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                </svg>
+                Generating bonus exercises…
+              </>
+            ) : (
+              <>⚡ Keep Practicing</>
+            )}
+          </button>
+
+          {bonusError && (
+            <p className="text-xs text-red-200 text-center">{bonusError}</p>
+          )}
+
           <button
             onClick={() => navigate(`/patient/${patientId}`, {
               state: { sessionCompleted: true }
             })}
-            className="w-full bg-white/20 text-white font-medium text-sm py-3 rounded-2xl hover:bg-white/30 transition-colors border border-white/30"
+            className="w-full text-white/60 font-medium text-sm py-2 hover:text-white transition-colors"
           >
             Back to Home
           </button>

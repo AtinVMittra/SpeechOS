@@ -65,10 +65,10 @@ export async function generateLessonScript(patient) {
     ? `At their last check-in (${patient.lastCheckIn.date}), they rated the session ${patient.lastCheckIn.rating}/5. Hard exercises: ${patient.lastCheckIn.hardExercises.join(', ') || 'none'}.`
     : ''
 
-  const prompt = `You are a warm, encouraging virtual speech-language pathologist preparing a spoken lesson for a patient doing home practice.
+  const prompt = `You are Victoria, a warm and upbeat virtual speech coach. You talk to patients like a friendly mentor — casual, encouraging, and genuinely excited for them. Avoid clinical jargon. Use natural spoken language with contractions, light enthusiasm, and personal touches.
 
-Write a lesson script for ${patient.name}, age ${patient.age}, who has ${patient.condition}.
-They are currently on a ${patient.streak}-day streak with ${patient.xp} XP earned.
+Write a spoken lesson script for ${patient.name.split(' ')[0]}, age ${patient.age}, who is working on ${patient.condition}.
+They are on a ${patient.streak}-day streak with ${patient.xp} XP earned.
 ${flaggedNote}
 ${checkInNote}
 
@@ -78,28 +78,28 @@ ${exerciseList}
 Return ONLY a valid JSON object with this exact structure — no markdown, no explanation:
 {
   "patientName": "<first name only>",
-  "greeting": "<1 warm sentence welcoming them>",
-  "todaysFocus": "<1 sentence summarizing today's exercises by name>",
+  "greeting": "<1 upbeat sentence welcoming them by first name>",
+  "todaysFocus": "<1 casual sentence summarizing today's exercises>",
   "segments": [
     {
       "id": "intro",
-      "speakerText": "<30-40 words: warm welcome, mention their streak if greater than 0, set a positive tone>",
+      "speakerText": "<30-40 words: friendly hey/hi greeting, celebrate their streak if > 0, set an excited tone — like a coach psyching them up>",
       "displayTitle": "Welcome"
     },
     {
       "id": "exercise-1",
-      "speakerText": "<40-60 words: name the exercise, explain it in plain language, add one word of encouragement>",
+      "speakerText": "<40-60 words: introduce the exercise by name in plain language, add a personal tip or fun encouragement>",
       "displayTitle": "Exercise 1: <exercise title>"
     },
     {
       "id": "tips",
-      "speakerText": "<30-40 words: 2 practical tips for today based on their condition${flaggedNote ? ' and flagged exercises' : ''}>",
+      "speakerText": "<30-40 words: 2 practical tips in plain language based on their condition${flaggedNote ? ' and flagged exercises' : ''} — conversational, not clinical>",
       "displayTitle": "Tips for Today"
     },
     {
       "id": "closing",
-      "speakerText": "<20-30 words: motivating close, reference streak or XP if notable, invite them to begin>",
-      "displayTitle": "Let's Begin"
+      "speakerText": "<20-30 words: warm, excited send-off — reference streak or XP if notable, invite them to jump in>",
+      "displayTitle": "Let's Go!"
     }
   ],
   "fullAudioScript": "<all speakerText fields concatenated in order, separated by a single space>",
@@ -221,6 +221,58 @@ Use standard pediatric SLP clinical language. Be specific and measurable in the 
   const match = text.match(/\{[\s\S]*\}/)
   if (!match) throw new Error('Could not parse SOAP note from AI response.')
   return JSON.parse(match[0])
+}
+
+export async function generateBonusExercises(patient, completedExerciseTitles) {
+  const prompt = `You are Victoria, a friendly speech coach. A patient just finished their main practice session and wants to keep going — great news! Generate 3 short bonus exercises that build on what they just practiced.
+
+Patient: ${patient.name.split(' ')[0]}, age ${patient.age}
+Condition: ${patient.condition}
+Just completed: ${completedExerciseTitles.join(', ')}
+
+Return ONLY a valid JSON array — no markdown, no explanation:
+[
+  {
+    "title": "<Short fun title, max 5 words>",
+    "type": "exercise",
+    "instruction": "<Friendly, plain-language instruction for independent practice. 1-2 sentences. No clinical terms.>"
+  },
+  {
+    "title": "<Short fun title>",
+    "type": "quiz",
+    "instruction": "<Encourage them to say the target word clearly and confidently.>",
+    "targetWord": "<single target word relevant to their therapy goal>"
+  },
+  {
+    "title": "<Short fun title>",
+    "type": "exercise",
+    "instruction": "<Friendly instruction. 1-2 sentences.>"
+  }
+]
+
+Rules:
+- Age-appropriate for a ${patient.age}-year-old
+- Build directly on the completed exercises — same sounds/words, slightly different approach
+- Keep language encouraging and casual — like a coach, not a clinician
+- For quiz type, pick an achievable single word that targets their therapy goal`
+
+  const text = await callAnthropic(prompt, 600)
+  const match = text.match(/\[[\s\S]*\]/)
+  if (!match) throw new Error('Could not parse bonus exercises from AI response.')
+
+  const exercises = JSON.parse(match[0])
+  if (!Array.isArray(exercises) || exercises.length === 0) {
+    throw new Error('Invalid bonus exercise format returned.')
+  }
+
+  return exercises.slice(0, 3).map((ex, i) => ({
+    id: `bonus-${Date.now()}-${i}`,
+    title: ex.title || `Bonus ${i + 1}`,
+    type: ex.type || 'exercise',
+    instruction: ex.instruction || '',
+    ...(ex.targetWord ? { targetWord: ex.targetWord } : {}),
+    bonus: true,
+  }))
 }
 
 export async function generateExercisePlan(sessionNote) {

@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { usePatientData } from '../context/PatientDataContext.jsx'
 import { generateLessonScript } from '../api/anthropic.js'
 import { synthesizeLessonAudio } from '../api/elevenlabs.js'
-import { generateHeyGenVideo, pollHeyGenVideo } from '../api/heygen.js'
 
 export default function LessonPlayer() {
   const { patientId } = useParams()
@@ -11,12 +10,10 @@ export default function LessonPlayer() {
   const { getPatientById } = usePatientData()
   const patient = getPatientById(patientId)
 
-  // Phase: 'generating' | 'audio-ready' | 'video-ready' | 'error'
+  // Phase: 'generating' | 'audio-ready' | 'error'
   const [phase, setPhase] = useState('generating')
   const [lessonScript, setLessonScript] = useState(null)
   const [audioUrl, setAudioUrl] = useState(null)
-  const [videoUrl, setVideoUrl] = useState(null)
-  const [videoStatus, setVideoStatus] = useState(null) // 'loading' | 'ready' | 'failed'
   const [error, setError] = useState(null)
   const [scriptReady, setScriptReady] = useState(false)
 
@@ -28,7 +25,6 @@ export default function LessonPlayer() {
   const [activeSegmentIdx, setActiveSegmentIdx] = useState(0)
 
   const audioRef = useRef(null)
-  const pollIntervalRef = useRef(null)
   const audioUrlRef = useRef(null)
 
   useEffect(() => {
@@ -36,28 +32,14 @@ export default function LessonPlayer() {
 
     async function init() {
       try {
-        // Step 1: Generate lesson script
         const script = await generateLessonScript(patient)
         setLessonScript(script)
         setScriptReady(true)
 
-        // Step 2: Synthesize audio + kick off HeyGen in parallel
-        const [url, videoId] = await Promise.all([
-          synthesizeLessonAudio(script.fullAudioScript),
-          generateHeyGenVideo(script).catch(err => {
-            console.warn('HeyGen video generation failed:', err)
-            return null
-          }),
-        ])
-
+        const url = await synthesizeLessonAudio(script.fullAudioScript)
         audioUrlRef.current = url
         setAudioUrl(url)
         setPhase('audio-ready')
-
-        if (videoId) {
-          setVideoStatus('loading')
-          startPolling(videoId)
-        }
       } catch (err) {
         setError(err.message)
         setPhase('error')
@@ -67,30 +49,9 @@ export default function LessonPlayer() {
     init()
 
     return () => {
-      clearInterval(pollIntervalRef.current)
       if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current)
     }
   }, [])
-
-  function startPolling(videoId) {
-    pollIntervalRef.current = setInterval(async () => {
-      try {
-        const result = await pollHeyGenVideo(videoId)
-        if (result.status === 'completed' && result.videoUrl) {
-          clearInterval(pollIntervalRef.current)
-          setVideoUrl(result.videoUrl)
-          setVideoStatus('ready')
-          setPhase('video-ready')
-        } else if (result.status === 'failed') {
-          clearInterval(pollIntervalRef.current)
-          setVideoStatus('failed')
-        }
-      } catch (err) {
-        // transient network error — keep polling
-        console.warn('Poll error:', err)
-      }
-    }, 8000)
-  }
 
   function handlePlayPause() {
     if (!audioRef.current) return
@@ -112,7 +73,6 @@ export default function LessonPlayer() {
     if (!audioRef.current) return
     const t = audioRef.current.currentTime
     setCurrentTime(t)
-    // Estimate active segment by proportional time
     if (duration > 0 && lessonScript?.segments) {
       const segCount = lessonScript.segments.length
       const idx = Math.min(Math.floor((t / duration) * segCount), segCount - 1)
@@ -152,7 +112,7 @@ export default function LessonPlayer() {
             <p className="text-xs text-slate-400">Pre-Session</p>
             <p className="text-sm font-semibold text-slate-800">Today's Lesson</p>
           </div>
-          {phase !== 'generating' && (
+          {phase === 'audio-ready' && (
             <span className="text-xs font-medium text-teal-600 bg-teal-50 px-2 py-1 rounded-full border border-teal-100">
               🎓 Ready
             </span>
@@ -168,7 +128,7 @@ export default function LessonPlayer() {
               </div>
               <h2 className="text-white text-xl font-bold text-center">Preparing your lesson…</h2>
               <p className="text-teal-100 text-sm text-center mt-1">
-                Your virtual SLP is getting ready for you
+                Victoria is getting ready for you
               </p>
             </div>
 
@@ -197,9 +157,9 @@ export default function LessonPlayer() {
                 </div>
                 <div>
                   <p className={`text-sm font-medium ${audioUrl ? 'text-emerald-700' : 'text-slate-700'}`}>
-                    Synthesizing your therapist's voice
+                    Synthesizing Victoria's voice
                   </p>
-                  <p className="text-xs text-slate-400">Rachel, your virtual SLP</p>
+                  <p className="text-xs text-slate-400">Victoria · Your Virtual SLP</p>
                 </div>
               </div>
             </div>
@@ -223,8 +183,8 @@ export default function LessonPlayer() {
           </div>
         )}
 
-        {/* Audio-ready / Video-ready phase */}
-        {(phase === 'audio-ready' || phase === 'video-ready') && lessonScript && (
+        {/* Audio-ready phase */}
+        {phase === 'audio-ready' && lessonScript && (
           <div className="flex-1 overflow-y-auto">
             {/* Teal hero */}
             <div className="bg-gradient-to-b from-teal-500 to-teal-600 px-6 pt-6 pb-8 rounded-b-3xl">
@@ -237,30 +197,15 @@ export default function LessonPlayer() {
 
             <div className="px-5 py-5 space-y-4">
 
-              {/* AI Video (shown when ready) */}
-              {phase === 'video-ready' && videoUrl && (
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                  <div className="bg-gradient-to-r from-purple-500 to-indigo-500 px-4 py-2.5">
-                    <p className="text-white text-xs font-semibold">🎬 AI Avatar Lesson</p>
-                  </div>
-                  <video
-                    src={videoUrl}
-                    controls
-                    playsInline
-                    className="w-full"
-                    style={{ maxHeight: '320px', objectFit: 'cover' }}
-                  />
-                  <p className="text-xs text-slate-400 text-center py-2">Your virtual SLP, Rachel</p>
-                </div>
-              )}
-
               {/* Audio player card */}
               <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">🎧</span>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-teal-50 border border-teal-100 flex items-center justify-center text-lg shrink-0">
+                    🎧
+                  </div>
                   <div className="flex-1">
                     <p className="text-sm font-semibold text-slate-800">Audio Lesson</p>
-                    <p className="text-xs text-slate-400">Rachel · Your Virtual SLP</p>
+                    <p className="text-xs text-slate-400">Victoria · Your Virtual SLP</p>
                   </div>
                   {duration > 0 && (
                     <span className="text-xs text-slate-400">{formatTime(duration)}</span>
@@ -355,32 +300,6 @@ export default function LessonPlayer() {
                   ))}
                 </div>
               </div>
-
-              {/* Video status pill (while loading) */}
-              {videoStatus === 'loading' && (
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center text-sm shrink-0">🎬</div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-slate-700">AI avatar video</p>
-                    <p className="text-xs text-slate-400">Generating your virtual SLP… ~1–3 min</p>
-                  </div>
-                  <div className="flex gap-0.5">
-                    {[0, 1, 2].map(i => (
-                      <div
-                        key={i}
-                        className="w-1.5 h-1.5 rounded-full bg-purple-400"
-                        style={{ animation: `loadingPulse 1.2s ease-in-out ${i * 0.4}s infinite` }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {videoStatus === 'failed' && (
-                <div className="bg-amber-50 border border-amber-100 rounded-2xl p-3">
-                  <p className="text-xs text-amber-700">Video generation failed — audio lesson is still available.</p>
-                </div>
-              )}
 
               {/* Begin Exercises button */}
               <div className="space-y-2 pt-1">

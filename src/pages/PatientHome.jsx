@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { usePatientData } from '../context/PatientDataContext.jsx'
 import ProgressRing from '../components/ProgressRing.jsx'
@@ -9,6 +10,20 @@ export default function PatientHome() {
   const navigate = useNavigate()
   const location = useLocation()
   const { getPatientById } = usePatientData()
+
+  const [hasLiveSession, setHasLiveSession] = useState(
+    () => !!localStorage.getItem(`speechos_room_${patientId}`)
+  )
+
+  useEffect(() => {
+    const ch = new BroadcastChannel('speechos-session')
+    ch.onmessage = (e) => {
+      if (e.data.patientId !== patientId) return
+      if (e.data.type === 'room_created') setHasLiveSession(true)
+      if (e.data.type === 'session_ended') setHasLiveSession(false)
+    }
+    return () => ch.close()
+  }, [patientId])
 
   const patient = getPatientById(patientId)
   const sessionCompleted = location.state?.sessionCompleted === true
@@ -48,6 +63,23 @@ export default function PatientHome() {
 
         {/* Main Card */}
         <div className="flex-1 bg-slate-50 rounded-t-3xl px-5 pt-6 pb-10 space-y-5">
+
+          {/* Live session banner */}
+          {hasLiveSession && (
+            <button
+              onClick={() => navigate(`/patient/${patientId}/session`)}
+              className="w-full flex items-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3.5 rounded-2xl transition-colors shadow-md"
+            >
+              <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse shrink-0" />
+              <div className="flex-1 text-left">
+                <p className="text-sm font-bold">Live Session in Progress</p>
+                <p className="text-xs text-indigo-200">Your therapist is ready — tap to join</p>
+              </div>
+              <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          )}
 
           {/* Stats Row */}
           <div className="grid grid-cols-3 gap-3">
