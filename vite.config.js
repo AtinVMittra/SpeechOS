@@ -8,6 +8,17 @@ export default defineConfig({
   },
   server: {
     proxy: {
+      '/api/daily': {
+        target: 'https://api.daily.co',
+        changeOrigin: true,
+        rewrite: path => path.replace(/^\/api\/daily/, '/v1'),
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq) => {
+            const key = process.env.DAILY_API_KEY
+            if (key) proxyReq.setHeader('Authorization', `Bearer ${key}`)
+          })
+        },
+      },
       '/api/elevenlabs': {
         target: 'https://api.elevenlabs.io',
         changeOrigin: true,

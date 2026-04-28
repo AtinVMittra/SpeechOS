@@ -40,6 +40,65 @@ app.post('/api/anthropic', async (req, res) => {
   }
 })
 
+// Create a Daily.co room and return its URL
+app.post('/api/daily/rooms', async (req, res) => {
+  const apiKey = process.env.DAILY_API_KEY
+  if (!apiKey) return res.status(500).json({ error: 'DAILY_API_KEY is not set on the server.' })
+  try {
+    const response = await fetch('https://api.daily.co/v1/rooms', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        properties: {
+          exp: Math.floor(Date.now() / 1000) + 3600,
+          enable_screenshare: true,
+          enable_chat: false,
+          start_video_off: false,
+          start_audio_off: false,
+        },
+      }),
+    })
+    const data = await response.json()
+    res.status(response.status).json(data)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// Return a short-lived Deepgram API key for client-side WebSocket auth
+app.get('/api/deepgram/token', async (req, res) => {
+  const apiKey = process.env.DEEPGRAM_API_KEY
+  if (!apiKey) return res.status(500).json({ error: 'DEEPGRAM_API_KEY is not set on the server.' })
+  try {
+    const projectsRes = await fetch('https://api.deepgram.com/v1/projects', {
+      headers: { Authorization: `Token ${apiKey}` },
+    })
+    const { projects } = await projectsRes.json()
+    if (!projects?.length) throw new Error('No Deepgram projects found.')
+    const projectId = projects[0].project_id
+
+    const keyRes = await fetch(`https://api.deepgram.com/v1/projects/${projectId}/keys`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Token ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        comment: 'speechos-session',
+        scopes: ['usage:write'],
+        time_to_live_in_seconds: 3600,
+      }),
+    })
+    const data = await keyRes.json()
+    res.json({ key: data.key.key })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
 // Proxy endpoint for HeyGen video generation
 app.post('/api/heygen/v2/video/generate', async (req, res) => {
   const apiKey = process.env.HEYGEN_API_KEY

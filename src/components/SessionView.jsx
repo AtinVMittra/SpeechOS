@@ -5,6 +5,8 @@ import FlashcardDrill from './games/FlashcardDrill.jsx'
 import MinimalPairs from './games/MinimalPairs.jsx'
 import WordSort from './games/WordSort.jsx'
 
+// ─── Game renderer ────────────────────────────────────────────────────────────
+
 function GameRenderer({ exercise }) {
   if (!exercise) return null
   switch (exercise.gameType) {
@@ -15,66 +17,109 @@ function GameRenderer({ exercise }) {
       <div className="p-4 space-y-2">
         <p className="text-sm font-semibold text-slate-700">{exercise.title}</p>
         <p className="text-sm text-slate-600 leading-relaxed">{exercise.instructions || exercise.instruction}</p>
-        {exercise.materials && <p className="text-xs text-slate-400"><span className="font-medium text-slate-500">Materials:</span> {exercise.materials}</p>}
+        {exercise.materials && (
+          <p className="text-xs text-slate-400">
+            <span className="font-medium text-slate-500">Materials:</span> {exercise.materials}
+          </p>
+        )}
       </div>
     )
   }
 }
 
-// VIDEO INTEGRATION TODO:
-// Replace this placeholder with a real video SDK.
-// Recommended options:
-//   - LiveKit (open-source, self-hostable): https://livekit.io
-//   - Daily.co (hosted, simple API): https://www.daily.co
-//   - Twilio Video: https://www.twilio.com/video
-// Steps: (1) add SDK package, (2) create a room/token server endpoint,
-// (3) replace <VideoPlaceholder> with the SDK's <VideoCall> component.
-function VideoPlaceholder() {
-  return (
-    <div className="relative bg-slate-900 rounded-2xl overflow-hidden aspect-video flex flex-col items-center justify-center gap-3 border-2 border-dashed border-slate-700">
-      <div className="absolute top-3 left-3 flex items-center gap-1.5">
-        <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-        <span className="text-xs text-slate-400 font-medium">Video — Integration Pending</span>
-      </div>
-      <svg className="w-12 h-12 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.069A1 1 0 0121 8.87v6.26a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-      </svg>
-      <p className="text-sm text-slate-500 text-center px-6">
-        Video call will appear here.<br />
-        <span className="text-xs text-slate-600">See <code className="text-amber-400">SessionView.jsx</code> for integration instructions.</span>
-      </p>
-      <div className="absolute bottom-3 flex gap-2">
-        <button className="flex items-center gap-1.5 text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded-full transition-colors">
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-          </svg>
-          Mic
-        </button>
-        <button className="flex items-center gap-1.5 text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded-full transition-colors">
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.069A1 1 0 0121 8.87v6.26a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-          </svg>
-          Camera
-        </button>
-        <button className="flex items-center gap-1.5 text-xs bg-red-700 hover:bg-red-600 text-white px-3 py-1.5 rounded-full transition-colors">
+// ─── Daily.co video ───────────────────────────────────────────────────────────
+
+async function createDailyRoom() {
+  const res = await fetch('/api/daily/rooms', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  })
+  const data = await res.json()
+  if (!data.url) throw new Error(data.error || 'Could not create Daily room.')
+  return data.url
+}
+
+function DailyVideo() {
+  const [roomUrl, setRoomUrl] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+
+  async function handleStart() {
+    setLoading(true)
+    setError(null)
+    try {
+      const url = await createDailyRoom()
+      setRoomUrl(url)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function handleEnd() {
+    setRoomUrl(null)
+  }
+
+  if (roomUrl) {
+    return (
+      <div className="relative rounded-2xl overflow-hidden bg-slate-900" style={{ aspectRatio: '16/9' }}>
+        <iframe
+          src={roomUrl}
+          allow="camera; microphone; fullscreen; speaker; display-capture; autoplay"
+          className="w-full h-full border-0"
+          title="Video session"
+        />
+        <button
+          onClick={handleEnd}
+          className="absolute top-3 right-3 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-full transition-colors shadow-lg"
+        >
           End Call
         </button>
       </div>
+    )
+  }
+
+  return (
+    <div className="bg-slate-900 rounded-2xl overflow-hidden flex flex-col items-center justify-center gap-4 py-12" style={{ aspectRatio: '16/9' }}>
+      <svg className="w-12 h-12 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.069A1 1 0 0121 8.87v6.26a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+      </svg>
+      <div className="text-center">
+        <p className="text-sm text-slate-400 mb-1">Video call via Daily.co</p>
+        <p className="text-xs text-slate-600">Patient joins using the room link</p>
+      </div>
+      <button
+        onClick={handleStart}
+        disabled={loading}
+        className="flex items-center gap-2 text-sm font-semibold bg-teal-600 hover:bg-teal-700 disabled:opacity-60 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl transition-colors"
+      >
+        {loading ? (
+          <>
+            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+            </svg>
+            Creating room…
+          </>
+        ) : (
+          <>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.069A1 1 0 0121 8.87v6.26a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+            Start Video Call
+          </>
+        )}
+      </button>
+      {error && <p className="text-xs text-red-400 text-center px-4">{error}</p>}
     </div>
   )
 }
 
-const GAME_TYPE_LABEL = {
-  'flashcard': 'Flashcard Drill',
-  'minimal-pairs': 'Minimal Pairs',
-  'word-sort': 'Word Sort',
-}
+// ─── Exercise panel ───────────────────────────────────────────────────────────
 
-const GAME_TYPE_COLOR = {
-  'flashcard': 'bg-teal-100 text-teal-700',
-  'minimal-pairs': 'bg-blue-100 text-blue-700',
-  'word-sort': 'bg-violet-100 text-violet-700',
-}
+const GAME_TYPE_LABEL = { 'flashcard': 'Flashcard Drill', 'minimal-pairs': 'Minimal Pairs', 'word-sort': 'Word Sort' }
+const GAME_TYPE_COLOR = { 'flashcard': 'bg-teal-100 text-teal-700', 'minimal-pairs': 'bg-blue-100 text-blue-700', 'word-sort': 'bg-violet-100 text-violet-700' }
 
 function ExercisePanel({ exercises }) {
   const [current, setCurrent] = useState(0)
@@ -90,10 +135,8 @@ function ExercisePanel({ exercises }) {
   )
 
   const ex = exercises[current]
-
   return (
     <div className="flex flex-col h-full">
-      {/* Exercise header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100 bg-slate-50 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           {ex.gameType && (
@@ -105,26 +148,16 @@ function ExercisePanel({ exercises }) {
         </div>
         <span className="text-xs text-slate-400 shrink-0 ml-2">{current + 1}/{exercises.length}</span>
       </div>
-
-      {/* Game content */}
       <div className="flex-1 overflow-y-auto">
         <GameRenderer exercise={ex} />
       </div>
-
-      {/* Nav */}
       <div className="p-2 border-t border-slate-100 flex gap-2 shrink-0">
-        <button
-          onClick={() => setCurrent(i => Math.max(0, i - 1))}
-          disabled={current === 0}
-          className="flex-1 text-xs font-medium py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-        >
+        <button onClick={() => setCurrent(i => Math.max(0, i - 1))} disabled={current === 0}
+          className="flex-1 text-xs font-medium py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
           ← Prev
         </button>
-        <button
-          onClick={() => setCurrent(i => Math.min(exercises.length - 1, i + 1))}
-          disabled={current === exercises.length - 1}
-          className="flex-1 text-xs font-medium py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 disabled:opacity-30 disabled:cursor-not-allowed text-white transition-colors"
-        >
+        <button onClick={() => setCurrent(i => Math.min(exercises.length - 1, i + 1))} disabled={current === exercises.length - 1}
+          className="flex-1 text-xs font-medium py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 disabled:opacity-30 disabled:cursor-not-allowed text-white transition-colors">
           Next →
         </button>
       </div>
@@ -132,81 +165,108 @@ function ExercisePanel({ exercises }) {
   )
 }
 
-// SCRIBE INTEGRATION NOTE:
-// Transcription uses the Web Speech API (SpeechRecognition).
-// Browser support: Chrome/Edge (full), Safari (partial), Firefox (none).
-// For production, replace with a streaming ASR service:
-//   - Deepgram (https://deepgram.com) — best accuracy for children's speech
-//   - AssemblyAI (https://www.assemblyai.com) — good diarization
-//   - Whisper via OpenAI API — highest accuracy, not real-time
-// Integration point: replace the SpeechRecognition block below with a
-// WebSocket connection to your chosen ASR service.
-function useScribe() {
+// ─── Deepgram scribe ──────────────────────────────────────────────────────────
+
+async function getDeepgramKey() {
+  if (import.meta.env.DEV) {
+    const key = import.meta.env.VITE_DEEPGRAM_API_KEY
+    if (!key) throw new Error('VITE_DEEPGRAM_API_KEY is not set in .env')
+    return key
+  }
+  const res = await fetch('/api/deepgram/token')
+  const data = await res.json()
+  if (!data.key) throw new Error(data.error || 'Could not get Deepgram token')
+  return data.key
+}
+
+function useDeepgramScribe() {
   const [transcript, setTranscript] = useState('')
   const [isListening, setIsListening] = useState(false)
-  const [supported, setSupported] = useState(true)
-  const recognitionRef = useRef(null)
+  const [error, setError] = useState(null)
+  const wsRef = useRef(null)
+  const mediaRecorderRef = useRef(null)
+  const streamRef = useRef(null)
+  const finalTextRef = useRef('')
 
-  useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (!SpeechRecognition) {
-      setSupported(false)
-      return
-    }
-    const rec = new SpeechRecognition()
-    rec.continuous = true
-    rec.interimResults = true
-    rec.lang = 'en-US'
+  async function start() {
+    setError(null)
+    try {
+      const key = await getDeepgramKey()
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      streamRef.current = stream
 
-    let finalText = ''
-    rec.onresult = (event) => {
-      let interim = ''
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const text = event.results[i][0].transcript
-        if (event.results[i].isFinal) {
-          finalText += text + ' '
+      const ws = new WebSocket(
+        'wss://api.deepgram.com/v1/listen?language=en-US&model=nova-2&interim_results=true&punctuate=true&smart_format=true',
+        ['token', key]
+      )
+      wsRef.current = ws
+
+      ws.onopen = () => {
+        setIsListening(true)
+        // Send audio in 250 ms chunks
+        const mr = new MediaRecorder(stream)
+        mediaRecorderRef.current = mr
+        mr.ondataavailable = (e) => {
+          if (ws.readyState === WebSocket.OPEN && e.data.size > 0) ws.send(e.data)
+        }
+        mr.start(250)
+      }
+
+      ws.onmessage = (e) => {
+        const msg = JSON.parse(e.data)
+        if (msg.type !== 'Results') return
+        const text = msg.channel?.alternatives?.[0]?.transcript
+        if (!text) return
+        if (msg.is_final) {
+          finalTextRef.current += text + ' '
+          setTranscript(finalTextRef.current)
         } else {
-          interim = text
+          setTranscript(finalTextRef.current + text)
         }
       }
-      setTranscript(finalText + interim)
-    }
-    rec.onend = () => setIsListening(false)
-    recognitionRef.current = rec
-  }, [])
 
-  function start() {
-    if (!recognitionRef.current) return
-    recognitionRef.current.start()
-    setIsListening(true)
+      ws.onerror = () => {
+        setError('Deepgram connection failed. Check your API key and network.')
+        setIsListening(false)
+      }
+      ws.onclose = () => setIsListening(false)
+
+    } catch (err) {
+      setError(err.message)
+    }
   }
 
   function stop() {
-    if (!recognitionRef.current) return
-    recognitionRef.current.stop()
+    mediaRecorderRef.current?.stop()
+    wsRef.current?.close()
+    streamRef.current?.getTracks().forEach(t => t.stop())
     setIsListening(false)
   }
 
   function reset() {
     stop()
+    finalTextRef.current = ''
     setTranscript('')
+    setError(null)
   }
 
-  return { transcript, isListening, supported, start, stop, reset, setTranscript }
+  useEffect(() => () => stop(), [])
+
+  return { transcript, isListening, error, start, stop, reset, setTranscript }
 }
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export default function SessionView({ patient }) {
   const { saveScribeTranscript, saveSoapNote } = usePatientData()
-  const { transcript, isListening, supported, start, stop, reset, setTranscript } = useScribe()
+  const { transcript, isListening, error: scribeError, start, stop, reset, setTranscript } = useDeepgramScribe()
   const [structuring, setStructuring] = useState(false)
   const [structureError, setStructureError] = useState(null)
   const [soapSaved, setSoapSaved] = useState(false)
   const transcriptRef = useRef(null)
 
   useEffect(() => {
-    if (transcriptRef.current) {
-      transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight
-    }
+    if (transcriptRef.current) transcriptRef.current.scrollTop = transcriptRef.current.scrollHeight
   }, [transcript])
 
   async function handleStructure() {
@@ -249,32 +309,28 @@ export default function SessionView({ patient }) {
         <p className="text-sm text-slate-500 mt-0.5">{patient.name} · Age {patient.age} · {patient.condition}</p>
       </div>
 
-      {/* Video + exercises row */}
+      {/* Video + exercises */}
       <div className="grid grid-cols-5 gap-4">
         <div className="col-span-3">
-          <VideoPlaceholder />
+          <DailyVideo />
         </div>
         <div className="col-span-2 border border-slate-200 rounded-2xl overflow-hidden flex flex-col bg-white" style={{ minHeight: '220px' }}>
           <ExercisePanel exercises={exercises} />
         </div>
       </div>
 
-      {/* Live Scribe */}
+      {/* Live Deepgram Scribe */}
       <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
         <div className="bg-gradient-to-r from-slate-700 to-slate-600 px-4 py-3 flex items-center gap-2">
           <svg className="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M12 18.364a9 9 0 010-12.728M8.464 15.536a5 5 0 010-7.072" />
           </svg>
           <h3 className="text-sm font-semibold text-white">Live AI Scribe</h3>
+          <span className="text-xs text-slate-400 ml-1">· Deepgram nova-2</span>
           {isListening && (
             <span className="ml-1 flex items-center gap-1 text-xs text-emerald-300 font-medium">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
               Recording
-            </span>
-          )}
-          {!supported && (
-            <span className="ml-auto text-xs text-amber-300">
-              Web Speech API not supported in this browser — use Chrome or Edge
             </span>
           )}
         </div>
@@ -288,29 +344,21 @@ export default function SessionView({ patient }) {
 
           <div className="flex items-center gap-2 flex-wrap">
             {!isListening ? (
-              <button
-                onClick={start}
-                disabled={!supported}
-                className="flex items-center gap-2 text-sm font-medium bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg transition-colors"
-              >
+              <button onClick={start}
+                className="flex items-center gap-2 text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg transition-colors">
                 <span className="w-2 h-2 rounded-full bg-white"></span>
                 Start Recording
               </button>
             ) : (
-              <button
-                onClick={stop}
-                className="flex items-center gap-2 text-sm font-medium bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
-              >
+              <button onClick={stop}
+                className="flex items-center gap-2 text-sm font-medium bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors">
                 <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
                 Stop Recording
               </button>
             )}
 
-            <button
-              onClick={handleStructure}
-              disabled={!transcript.trim() || structuring}
-              className="flex items-center gap-2 text-sm font-medium bg-teal-600 hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg transition-colors"
-            >
+            <button onClick={handleStructure} disabled={!transcript.trim() || structuring}
+              className="flex items-center gap-2 text-sm font-medium bg-teal-600 hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg transition-colors">
               {structuring ? (
                 <>
                   <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -329,10 +377,8 @@ export default function SessionView({ patient }) {
               )}
             </button>
 
-            <button
-              onClick={reset}
-              className="text-sm font-medium text-slate-500 hover:text-slate-700 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors"
-            >
+            <button onClick={reset}
+              className="text-sm font-medium text-slate-500 hover:text-slate-700 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors">
               Clear
             </button>
 
@@ -344,12 +390,10 @@ export default function SessionView({ patient }) {
                 SOAP note saved — view in the SOAP tab
               </span>
             )}
-            {structureError && <span className="text-xs text-red-600">{structureError}</span>}
+            {(scribeError || structureError) && (
+              <span className="text-xs text-red-600">{scribeError || structureError}</span>
+            )}
           </div>
-
-          <p className="text-xs text-slate-400">
-            Transcription uses the browser's Web Speech API. For production use, replace with Deepgram or AssemblyAI — see <code>SessionView.jsx</code> comments.
-          </p>
         </div>
       </div>
     </div>
