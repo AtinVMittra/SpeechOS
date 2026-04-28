@@ -1,6 +1,25 @@
 import { useState, useEffect, useRef } from 'react'
 import { structureScribeOutput } from '../api/anthropic.js'
 import { usePatientData } from '../context/PatientDataContext.jsx'
+import FlashcardDrill from './games/FlashcardDrill.jsx'
+import MinimalPairs from './games/MinimalPairs.jsx'
+import WordSort from './games/WordSort.jsx'
+
+function GameRenderer({ exercise }) {
+  if (!exercise) return null
+  switch (exercise.gameType) {
+    case 'flashcard': return <FlashcardDrill exercise={exercise} />
+    case 'minimal-pairs': return <MinimalPairs exercise={exercise} />
+    case 'word-sort': return <WordSort exercise={exercise} />
+    default: return (
+      <div className="p-4 space-y-2">
+        <p className="text-sm font-semibold text-slate-700">{exercise.title}</p>
+        <p className="text-sm text-slate-600 leading-relaxed">{exercise.instructions || exercise.instruction}</p>
+        {exercise.materials && <p className="text-xs text-slate-400"><span className="font-medium text-slate-500">Materials:</span> {exercise.materials}</p>}
+      </div>
+    )
+  }
+}
 
 // VIDEO INTEGRATION TODO:
 // Replace this placeholder with a real video SDK.
@@ -45,45 +64,66 @@ function VideoPlaceholder() {
   )
 }
 
+const GAME_TYPE_LABEL = {
+  'flashcard': 'Flashcard Drill',
+  'minimal-pairs': 'Minimal Pairs',
+  'word-sort': 'Word Sort',
+}
+
+const GAME_TYPE_COLOR = {
+  'flashcard': 'bg-teal-100 text-teal-700',
+  'minimal-pairs': 'bg-blue-100 text-blue-700',
+  'word-sort': 'bg-violet-100 text-violet-700',
+}
+
 function ExercisePanel({ exercises }) {
   const [current, setCurrent] = useState(0)
+
   if (!exercises || exercises.length === 0) return (
-    <div className="flex items-center justify-center h-full text-sm text-slate-400 p-6 text-center">
-      No exercises in session plan.<br />Generate a plan in Session Planning first.
+    <div className="flex flex-col items-center justify-center h-full text-center p-6 gap-2">
+      <svg className="w-8 h-8 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+      </svg>
+      <p className="text-sm text-slate-400">No games yet.</p>
+      <p className="text-xs text-slate-300">Generate a session plan first.</p>
     </div>
   )
+
   const ex = exercises[current]
+
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100">
-        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Exercises</span>
-        <span className="text-xs text-slate-400">{current + 1} / {exercises.length}</span>
+      {/* Exercise header */}
+      <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100 bg-slate-50 shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          {ex.gameType && (
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md shrink-0 ${GAME_TYPE_COLOR[ex.gameType] || 'bg-slate-100 text-slate-600'}`}>
+              {GAME_TYPE_LABEL[ex.gameType] || ex.gameType}
+            </span>
+          )}
+          <span className="text-xs font-semibold text-slate-700 truncate">{ex.title}</span>
+        </div>
+        <span className="text-xs text-slate-400 shrink-0 ml-2">{current + 1}/{exercises.length}</span>
       </div>
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        <h4 className="text-sm font-semibold text-slate-800">{ex.title}</h4>
-        <p className="text-sm text-slate-600 leading-relaxed">{ex.instructions || ex.instruction}</p>
-        {ex.materials && (
-          <p className="text-xs text-slate-400"><span className="font-medium text-slate-500">Materials:</span> {ex.materials}</p>
-        )}
-        {(ex.targetTrials || ex.targetAccuracy) && (
-          <div className="flex gap-2 flex-wrap">
-            {ex.targetTrials && <span className="text-xs px-2 py-0.5 bg-teal-50 text-teal-700 rounded-full">{ex.targetTrials} trials</span>}
-            {ex.targetAccuracy && <span className="text-xs px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">Target: {ex.targetAccuracy}</span>}
-          </div>
-        )}
+
+      {/* Game content */}
+      <div className="flex-1 overflow-y-auto">
+        <GameRenderer exercise={ex} />
       </div>
-      <div className="p-3 border-t border-slate-100 flex gap-2">
+
+      {/* Nav */}
+      <div className="p-2 border-t border-slate-100 flex gap-2 shrink-0">
         <button
           onClick={() => setCurrent(i => Math.max(0, i - 1))}
           disabled={current === 0}
-          className="flex-1 text-xs font-medium py-2 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="flex-1 text-xs font-medium py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
-          ← Previous
+          ← Prev
         </button>
         <button
           onClick={() => setCurrent(i => Math.min(exercises.length - 1, i + 1))}
           disabled={current === exercises.length - 1}
-          className="flex-1 text-xs font-medium py-2 rounded-lg bg-teal-600 hover:bg-teal-700 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors"
+          className="flex-1 text-xs font-medium py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 disabled:opacity-30 disabled:cursor-not-allowed text-white transition-colors"
         >
           Next →
         </button>

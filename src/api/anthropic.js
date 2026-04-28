@@ -120,7 +120,7 @@ Important: include one "exercise-N" segment per exercise (exercise-1, exercise-2
 }
 
 export async function generateSessionPlan(patient, sessionFocus) {
-  const prompt = `You are a pediatric speech-language pathologist creating a structured therapy session plan for a child.
+  const prompt = `You are a pediatric speech-language pathologist creating a structured therapy session plan with interactive games for a ${patient.age}-year-old child.
 
 Patient: ${patient.name}, age ${patient.age}
 Condition: ${patient.condition}
@@ -128,32 +128,69 @@ Therapy Goal: ${patient.evaluationOutcome?.overarchingGoal || 'Not specified'}
 Key Areas: ${patient.evaluationOutcome?.keyAreas?.join(', ') || 'Not specified'}
 SLP's Session Focus: "${sessionFocus}"
 
-Generate a detailed session plan. Return ONLY valid JSON, no markdown:
+Generate 3 exercises. Each exercise must be one of these three game types:
+- "flashcard": drill individual words/sounds. Best for articulation practice, naming, vocabulary.
+- "minimal-pairs": two words shown side by side, patient picks which one was said. Best for discrimination and phonological awareness.
+- "word-sort": patient sorts words into 2 categories. Best for phonological patterns (e.g. initial vs. final position) or semantic categories.
+
+Return ONLY valid JSON, no markdown:
 {
-  "sessionFocus": "<one sentence summarizing the session focus>",
+  "sessionFocus": "<one sentence>",
   "totalDurationMinutes": 45,
   "blocks": [
-    {"phase": "Warm-Up", "durationMinutes": 5, "activity": "<name>", "description": "<what to do>", "materials": "<materials needed>"},
-    {"phase": "Targeted Drill", "durationMinutes": 15, "activity": "<name>", "description": "<what to do>", "materials": "<materials needed>"},
-    {"phase": "Generalization Activity", "durationMinutes": 15, "activity": "<name>", "description": "<what to do>", "materials": "<materials needed>"},
-    {"phase": "Wrap-Up", "durationMinutes": 10, "activity": "<name>", "description": "<what to do>", "materials": "<materials needed>"}
+    {"phase": "Warm-Up", "durationMinutes": 5, "activity": "<name>", "description": "<what to do>", "materials": "<materials>"},
+    {"phase": "Targeted Drill", "durationMinutes": 15, "activity": "<name>", "description": "<what to do>", "materials": "<materials>"},
+    {"phase": "Generalization Activity", "durationMinutes": 15, "activity": "<name>", "description": "<what to do>", "materials": "<materials>"},
+    {"phase": "Wrap-Up", "durationMinutes": 10, "activity": "<name>", "description": "<what to do>", "materials": "<materials>"}
   ],
   "exercises": [
     {
       "id": "sp-ex-1",
-      "title": "<exercise title>",
-      "materials": "<what you need>",
-      "instructions": "<step-by-step instructions>",
-      "targetTrials": <number>,
+      "gameType": "flashcard",
+      "title": "<title>",
+      "instructions": "<brief therapist instructions>",
+      "targetTrials": <number 8-15>,
       "targetAccuracy": "<e.g. 80%>",
-      "ageNote": "<why this suits a ${patient.age}-year-old>"
+      "ageNote": "<why this suits a ${patient.age}-year-old>",
+      "cards": [
+        {"word": "<word>", "emoji": "<single relevant emoji>", "targetSound": "<e.g. /s/ initial>", "hint": "<short pronunciation hint>"}
+      ]
+    },
+    {
+      "id": "sp-ex-2",
+      "gameType": "minimal-pairs",
+      "title": "<title>",
+      "instructions": "<brief therapist instructions>",
+      "targetTrials": <number 6-10>,
+      "targetAccuracy": "<e.g. 75%>",
+      "ageNote": "<why this suits a ${patient.age}-year-old>",
+      "pairs": [
+        {"target": "<target word>", "foil": "<minimally different word>", "targetSound": "<contrast being trained>"}
+      ]
+    },
+    {
+      "id": "sp-ex-3",
+      "gameType": "word-sort",
+      "title": "<title>",
+      "instructions": "<brief therapist instructions>",
+      "targetTrials": <total number of words>,
+      "targetAccuracy": "<e.g. 80%>",
+      "ageNote": "<why this suits a ${patient.age}-year-old>",
+      "categories": ["<Category A>", "<Category B>"],
+      "words": [
+        {"word": "<word>", "category": "<Category A or B>"}
+      ]
     }
   ]
 }
 
-Make all exercises age-appropriate for a ${patient.age}-year-old. Use play-based activities where possible. Include 3–4 exercises.`
+Rules:
+- flashcard: include 8–12 cards with age-appropriate words and relevant emojis
+- minimal-pairs: include 6–8 pairs where the contrast targets the therapy goal
+- word-sort: include 10–14 words split roughly equally across the 2 categories
+- Make games directly relevant to the patient's specific therapy goal and condition`
 
-  const text = await callAnthropic(prompt, 1500)
+  const text = await callAnthropic(prompt, 2000)
   const match = text.match(/\{[\s\S]*\}/)
   if (!match) throw new Error('Could not parse session plan from AI response.')
   const plan = JSON.parse(match[0])
