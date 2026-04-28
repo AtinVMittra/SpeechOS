@@ -119,6 +119,73 @@ Important: include one "exercise-N" segment per exercise (exercise-1, exercise-2
   return script
 }
 
+export async function generateSessionPlan(patient, sessionFocus) {
+  const prompt = `You are a pediatric speech-language pathologist creating a structured therapy session plan for a child.
+
+Patient: ${patient.name}, age ${patient.age}
+Condition: ${patient.condition}
+Therapy Goal: ${patient.evaluationOutcome?.overarchingGoal || 'Not specified'}
+Key Areas: ${patient.evaluationOutcome?.keyAreas?.join(', ') || 'Not specified'}
+SLP's Session Focus: "${sessionFocus}"
+
+Generate a detailed session plan. Return ONLY valid JSON, no markdown:
+{
+  "sessionFocus": "<one sentence summarizing the session focus>",
+  "totalDurationMinutes": 45,
+  "blocks": [
+    {"phase": "Warm-Up", "durationMinutes": 5, "activity": "<name>", "description": "<what to do>", "materials": "<materials needed>"},
+    {"phase": "Targeted Drill", "durationMinutes": 15, "activity": "<name>", "description": "<what to do>", "materials": "<materials needed>"},
+    {"phase": "Generalization Activity", "durationMinutes": 15, "activity": "<name>", "description": "<what to do>", "materials": "<materials needed>"},
+    {"phase": "Wrap-Up", "durationMinutes": 10, "activity": "<name>", "description": "<what to do>", "materials": "<materials needed>"}
+  ],
+  "exercises": [
+    {
+      "id": "sp-ex-1",
+      "title": "<exercise title>",
+      "materials": "<what you need>",
+      "instructions": "<step-by-step instructions>",
+      "targetTrials": <number>,
+      "targetAccuracy": "<e.g. 80%>",
+      "ageNote": "<why this suits a ${patient.age}-year-old>"
+    }
+  ]
+}
+
+Make all exercises age-appropriate for a ${patient.age}-year-old. Use play-based activities where possible. Include 3–4 exercises.`
+
+  const text = await callAnthropic(prompt, 1500)
+  const match = text.match(/\{[\s\S]*\}/)
+  if (!match) throw new Error('Could not parse session plan from AI response.')
+  const plan = JSON.parse(match[0])
+  return { ...plan, id: `plan-${Date.now()}`, createdAt: new Date().toISOString(), patientId: patient.id }
+}
+
+export async function structureScribeOutput(transcript, patient) {
+  const prompt = `You are a clinical documentation AI helping a pediatric speech-language pathologist write a SOAP note from a session transcript.
+
+Patient: ${patient.name}, age ${patient.age}
+Condition: ${patient.condition}
+Therapy Goal: ${patient.evaluationOutcome?.overarchingGoal || 'Not specified'}
+
+Session Transcript:
+"${transcript}"
+
+Generate a structured SOAP note. Return ONLY valid JSON, no markdown:
+{
+  "subjective": "<Patient/parent reported information — what the child or parent said about progress, difficulties, mood, homework completion. 2–3 sentences.>",
+  "objective": "<Measurable clinical observations — specific trials attempted, accuracy percentages, error types, cueing levels used. 3–4 sentences with numbers.>",
+  "assessment": "<Clinical interpretation — progress toward goal, patterns noted, factors affecting performance. 2–3 sentences.>",
+  "plan": "<Next session focus, homework assigned, any referrals or parent coaching notes. 2–3 sentences.>"
+}
+
+Use standard pediatric SLP clinical language. Be specific and measurable in the Objective section.`
+
+  const text = await callAnthropic(prompt, 800)
+  const match = text.match(/\{[\s\S]*\}/)
+  if (!match) throw new Error('Could not parse SOAP note from AI response.')
+  return JSON.parse(match[0])
+}
+
 export async function generateExercisePlan(sessionNote) {
   const prompt = `You are a speech-language pathologist creating a structured home practice plan. Based on the session note below, generate exactly 3 daily exercises for the patient's caregiver to complete at home between sessions.
 
