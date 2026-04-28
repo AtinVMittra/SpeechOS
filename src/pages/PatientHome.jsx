@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { usePatientData } from '../context/PatientDataContext.jsx'
+import { generateBonusExercises } from '../api/anthropic.js'
 import ProgressRing from '../components/ProgressRing.jsx'
 
 const LEVEL_LABELS = ['', 'Beginner', 'Explorer', 'Practitioner', 'Star', 'Champion']
@@ -14,6 +15,22 @@ export default function PatientHome() {
   const [hasLiveSession, setHasLiveSession] = useState(
     () => !!localStorage.getItem(`speechos_room_${patientId}`)
   )
+  const [generatingBonus, setGeneratingBonus] = useState(false)
+  const [bonusError, setBonusError] = useState(null)
+
+  async function handleGenerateExercises() {
+    const patient = getPatientById(patientId)
+    if (!patient) return
+    setGeneratingBonus(true)
+    setBonusError(null)
+    try {
+      const bonus = await generateBonusExercises(patient, patient.exercises.map(e => e.title))
+      navigate(`/patient/${patientId}/session`, { state: { bonusExercises: bonus } })
+    } catch (err) {
+      setBonusError(err.message)
+      setGeneratingBonus(false)
+    }
+  }
 
   useEffect(() => {
     const ch = new BroadcastChannel('speechos-session')
@@ -160,6 +177,37 @@ export default function PatientHome() {
                 )
               })}
             </div>
+          </div>
+
+          {/* Generate new exercises */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-lg shrink-0">
+                ⚡
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-slate-800">Want more practice?</p>
+                <p className="text-xs text-slate-400">Generate a fresh set of exercises anytime</p>
+              </div>
+            </div>
+            <button
+              onClick={handleGenerateExercises}
+              disabled={generatingBonus}
+              className="w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white font-semibold text-sm py-3 rounded-xl transition-colors"
+            >
+              {generatingBonus ? (
+                <>
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  </svg>
+                  Generating exercises…
+                </>
+              ) : (
+                <>⚡ Generate New Exercises</>
+              )}
+            </button>
+            {bonusError && <p className="text-xs text-red-500 text-center">{bonusError}</p>}
           </div>
 
           {/* Badges */}

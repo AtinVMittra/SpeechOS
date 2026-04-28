@@ -113,7 +113,101 @@ function VideoCallPanel({ roomUrl, onClose }) {
   )
 }
 
-// ─── Exercise components ──────────────────────────────────────────────────────
+// ─── Session game exercise (clinical session plan exercises) ──────────────────
+
+function SessionGameExercise({ exercise, onComplete }) {
+  const [done, setDone] = useState(false)
+
+  function handleDone() {
+    setDone(true)
+    onComplete(15)
+  }
+
+  const gameType = exercise.gameType
+
+  return (
+    <div className="space-y-4">
+      {exercise.instructions && (
+        <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4">
+          <p className="text-sm text-indigo-800 leading-relaxed">{exercise.instructions}</p>
+        </div>
+      )}
+
+      {/* Flashcard — show all words as a grid */}
+      {gameType === 'flashcard' && exercise.cards?.length > 0 && (
+        <div>
+          <p className="text-xs text-slate-500 mb-2 font-medium">Practice these words with your therapist:</p>
+          <div className="grid grid-cols-2 gap-2">
+            {exercise.cards.map((card) => (
+              <div key={card.word} className="bg-white border border-slate-200 rounded-xl p-3 flex items-center gap-2 shadow-sm">
+                <span className="text-xl">{card.emoji}</span>
+                <div>
+                  <p className="text-sm font-bold text-slate-800">{card.word}</p>
+                  {card.hint && <p className="text-xs text-slate-400">{card.hint}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Minimal pairs — show all pairs */}
+      {gameType === 'minimal-pairs' && exercise.pairs?.length > 0 && (
+        <div>
+          <p className="text-xs text-slate-500 mb-2 font-medium">Listen carefully — tell your therapist which word you hear:</p>
+          <div className="space-y-2">
+            {exercise.pairs.map((pair, i) => (
+              <div key={i} className="flex gap-2">
+                <div className="flex-1 bg-indigo-50 border border-indigo-100 rounded-xl py-3 text-center">
+                  <p className="text-sm font-bold text-indigo-700">{pair.target}</p>
+                </div>
+                <div className="flex items-center text-slate-300 font-bold text-sm">vs</div>
+                <div className="flex-1 bg-indigo-50 border border-indigo-100 rounded-xl py-3 text-center">
+                  <p className="text-sm font-bold text-indigo-700">{pair.foil}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Word sort — show categories + words */}
+      {gameType === 'word-sort' && exercise.categories?.length === 2 && exercise.words?.length > 0 && (
+        <div>
+          <p className="text-xs text-slate-500 mb-2 font-medium">Sort these words with your therapist:</p>
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            {exercise.categories.map((cat) => (
+              <div key={cat} className="bg-violet-50 border border-violet-200 rounded-xl p-3">
+                <p className="text-xs font-bold text-violet-700 mb-2 text-center">{cat}</p>
+                <div className="space-y-1">
+                  {exercise.words.filter(w => w.category === cat).map(w => (
+                    <div key={w.word} className="bg-white border border-violet-100 rounded-lg px-2 py-1 text-center">
+                      <p className="text-sm font-medium text-slate-700">{w.word}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <button
+        onClick={handleDone}
+        disabled={done}
+        className={`w-full font-semibold text-sm py-3.5 rounded-2xl transition-colors ${
+          done
+            ? 'bg-emerald-500 text-white'
+            : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+        }`}
+      >
+        {done ? '✓ Done!' : 'Mark as Done'}
+      </button>
+    </div>
+  )
+}
+
+// ─── Standard exercise components ────────────────────────────────────────────
 
 function VideoExercise({ exercise, onComplete }) {
   const [watched, setWatched] = useState(false)
@@ -146,9 +240,7 @@ function VideoExercise({ exercise, onComplete }) {
       <button
         onClick={() => { setWatched(true); onComplete(10) }}
         className={`w-full font-semibold text-sm py-3.5 rounded-2xl transition-colors ${
-          watched
-            ? 'bg-emerald-500 text-white'
-            : 'bg-teal-600 hover:bg-teal-700 text-white'
+          watched ? 'bg-emerald-500 text-white' : 'bg-teal-600 hover:bg-teal-700 text-white'
         }`}
       >
         {watched ? '✓ Watched!' : 'Mark as Watched'}
@@ -209,10 +301,7 @@ function StandardExercise({ exercise, onComplete }) {
       )}
 
       {!running && !done && (
-        <button
-          onClick={startTimer}
-          className="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold text-sm py-3.5 rounded-2xl transition-colors"
-        >
+        <button onClick={startTimer} className="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold text-sm py-3.5 rounded-2xl transition-colors">
           Start 10s Practice Timer
         </button>
       )}
@@ -222,9 +311,7 @@ function StandardExercise({ exercise, onComplete }) {
           onClick={() => onComplete(15)}
           disabled={running && !done}
           className={`w-full font-semibold text-sm py-3.5 rounded-2xl transition-colors ${
-            done
-              ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
-              : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+            done ? 'bg-emerald-500 hover:bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400 cursor-not-allowed'
           }`}
         >
           {done ? '✓ Done! Next Exercise →' : 'Finish timer first…'}
@@ -244,8 +331,12 @@ export default function SessionPlayer() {
 
   const patient = getPatientById(patientId)
   const bonusExercises = location.state?.bonusExercises
-  const exercises = bonusExercises || patient?.exercises || []
+
+  // Prefer clinical session plan exercises; fall back to home practice exercises
+  const sessionPlanExercises = patient?.sessionPlan?.exercises
+  const exercises = bonusExercises || sessionPlanExercises || patient?.exercises || []
   const isBonusMode = !!bonusExercises
+  const isSessionMode = !bonusExercises && !!sessionPlanExercises
 
   const [step, setStep] = useState(0)
   const [xpEarned, setXpEarned] = useState(0)
@@ -265,9 +356,7 @@ export default function SessionPlayer() {
     const ch = new BroadcastChannel('speechos-session')
     ch.onmessage = (e) => {
       if (e.data.patientId !== patientId) return
-      if (e.data.type === 'exercise_changed') {
-        setLiveExercise(e.data.exercise)
-      }
+      if (e.data.type === 'exercise_changed') setLiveExercise(e.data.exercise)
       if (e.data.type === 'room_created') {
         const url = e.data.url
         setRoomUrl(url)
@@ -306,8 +395,7 @@ export default function SessionPlayer() {
   const totalSteps = exercises.length
 
   function handleExerciseComplete(xp) {
-    const newTotal = xpEarned + xp
-    setXpEarned(newTotal)
+    setXpEarned(prev => prev + xp)
     setPendingXp(xp)
     setShowXpPopup(true)
     setCompletedIds(prev => [...prev, currentExercise.id])
@@ -329,6 +417,18 @@ export default function SessionPlayer() {
 
   const isCompleted = completedIds.includes(currentExercise?.id)
 
+  // Badge for exercise type
+  function typeBadge(ex) {
+    if (ex?.gameType === 'flashcard') return { label: '🃏 Flashcard', cls: 'bg-indigo-50 text-indigo-600 border-indigo-100' }
+    if (ex?.gameType === 'minimal-pairs') return { label: '👂 Minimal Pairs', cls: 'bg-indigo-50 text-indigo-600 border-indigo-100' }
+    if (ex?.gameType === 'word-sort') return { label: '🗂 Word Sort', cls: 'bg-violet-50 text-violet-600 border-violet-100' }
+    if (ex?.type === 'video') return { label: '🎬 Video', cls: 'bg-blue-50 text-blue-600 border-blue-100' }
+    if (ex?.type === 'quiz') return { label: '🎤 Voice Quiz', cls: 'bg-purple-50 text-purple-600 border-purple-100' }
+    return { label: '📋 Exercise', cls: 'bg-teal-50 text-teal-600 border-teal-100' }
+  }
+
+  const badge = typeBadge(currentExercise)
+
   return (
     <div className="min-h-screen bg-slate-50 flex justify-center">
       <div className="w-full max-w-[390px] flex flex-col min-h-screen">
@@ -345,7 +445,7 @@ export default function SessionPlayer() {
           </button>
           <div className="flex-1">
             <p className="text-xs text-slate-400">
-              {isBonusMode ? '⚡ Bonus Practice · ' : ''}Exercise {step + 1} of {totalSteps}
+              {isBonusMode ? '⚡ Bonus · ' : isSessionMode ? '🩺 Session · ' : ''}Exercise {step + 1} of {totalSteps}
             </p>
             <p className="text-sm font-semibold text-slate-800 truncate">{currentExercise?.title}</p>
           </div>
@@ -363,7 +463,7 @@ export default function SessionPlayer() {
           </div>
         </div>
 
-        {/* Progress bar segments */}
+        {/* Progress bar */}
         <div className="flex gap-1 px-5 py-3 bg-white border-b border-slate-100">
           {exercises.map((_, i) => (
             <div
@@ -371,9 +471,7 @@ export default function SessionPlayer() {
               className={`flex-1 h-1.5 rounded-full transition-colors ${
                 i < step || completedIds.includes(exercises[i].id)
                   ? 'bg-teal-500'
-                  : i === step
-                  ? 'bg-teal-300'
-                  : 'bg-slate-200'
+                  : i === step ? 'bg-teal-300' : 'bg-slate-200'
               }`}
             />
           ))}
@@ -382,12 +480,8 @@ export default function SessionPlayer() {
         {/* Exercise content */}
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4 relative">
 
-          {/* XP Popup */}
-          {showXpPopup && (
-            <XpPopup xpAmount={pendingXp} onDone={() => setShowXpPopup(false)} />
-          )}
+          {showXpPopup && <XpPopup xpAmount={pendingXp} onDone={() => setShowXpPopup(false)} />}
 
-          {/* Interstitial */}
           {showInterstitial && (
             <div className="absolute inset-0 z-30 bg-white flex items-center justify-center">
               <div className="text-center space-y-3">
@@ -402,47 +496,54 @@ export default function SessionPlayer() {
             <VideoCallPanel roomUrl={roomUrl} onClose={() => setShowVideoCall(false)} />
           )}
 
-          {/* Live session panel — shown when therapist is running a game */}
-          {liveExercise && (
+          {/* Live exercise broadcast panel — only shown when NOT in session mode
+              (in session mode the main content IS the session exercises) */}
+          {liveExercise && !isSessionMode && (
             <LiveSessionPanel exercise={liveExercise} />
           )}
 
-          {/* Exercise type card */}
+          {/* Main exercise card */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 space-y-4">
-            {/* Type badge */}
-            <div className="flex items-center gap-2">
-              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
-                currentExercise?.type === 'video'
-                  ? 'bg-blue-50 text-blue-600 border-blue-100'
-                  : currentExercise?.type === 'quiz'
-                  ? 'bg-purple-50 text-purple-600 border-purple-100'
-                  : 'bg-teal-50 text-teal-600 border-teal-100'
-              }`}>
-                {currentExercise?.type === 'video' ? '🎬 Video' : currentExercise?.type === 'quiz' ? '🎤 Voice Quiz' : '📋 Exercise'}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${badge.cls}`}>
+                {badge.label}
               </span>
               {isBonusMode && (
                 <span className="text-xs font-semibold px-2.5 py-1 rounded-full border bg-amber-50 text-amber-600 border-amber-100">
                   ⚡ Bonus
                 </span>
               )}
+              {isSessionMode && (
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-full border bg-indigo-50 text-indigo-600 border-indigo-100">
+                  🩺 With Therapist
+                </span>
+              )}
             </div>
 
-            {/* Render by type */}
-            {currentExercise?.type === 'video' && (
+            {/* Session plan game exercises */}
+            {currentExercise?.gameType && (
+              <SessionGameExercise
+                exercise={currentExercise}
+                onComplete={(xp) => { if (!isCompleted) handleExerciseComplete(xp) }}
+              />
+            )}
+
+            {/* Home practice exercises */}
+            {!currentExercise?.gameType && currentExercise?.type === 'video' && (
               <VideoExercise
                 exercise={currentExercise}
                 onComplete={(xp) => { if (!isCompleted) handleExerciseComplete(xp) }}
               />
             )}
 
-            {currentExercise?.type === 'exercise' && (
+            {!currentExercise?.gameType && currentExercise?.type === 'exercise' && (
               <StandardExercise
                 exercise={currentExercise}
                 onComplete={(xp) => { if (!isCompleted) handleExerciseComplete(xp) }}
               />
             )}
 
-            {currentExercise?.type === 'quiz' && (
+            {!currentExercise?.gameType && currentExercise?.type === 'quiz' && (
               <VoiceQuiz
                 targetWord={currentExercise.targetWord || currentExercise.title}
                 onGrade={(grade, xp) => { if (!isCompleted) handleExerciseComplete(xp) }}
@@ -450,7 +551,6 @@ export default function SessionPlayer() {
             )}
           </div>
 
-          {/* Next / Finish button — shown after completion */}
           {isCompleted && (
             <button
               onClick={advanceStep}
