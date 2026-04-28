@@ -68,38 +68,12 @@ app.post('/api/daily/rooms', async (req, res) => {
   }
 })
 
-// Return a short-lived Deepgram API key for client-side WebSocket auth
-app.get('/api/deepgram/token', async (req, res) => {
+// Return the Deepgram API key for client-side WebSocket auth.
+// The key is never stored in git — it lives only in the server environment.
+app.get('/api/deepgram/token', (req, res) => {
   const apiKey = process.env.DEEPGRAM_API_KEY
   if (!apiKey) return res.status(500).json({ error: 'DEEPGRAM_API_KEY is not set on the server.' })
-  try {
-    const projectsRes = await fetch('https://api.deepgram.com/v1/projects', {
-      headers: { Authorization: `Token ${apiKey}` },
-    })
-    const { projects } = await projectsRes.json()
-    if (!projects?.length) throw new Error('No Deepgram projects found.')
-    const projectId = projects[0].project_id
-
-    const keyRes = await fetch(`https://api.deepgram.com/v1/projects/${projectId}/keys`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Token ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        comment: 'speechos-session',
-        scopes: ['usage:write'],
-        time_to_live_in_seconds: 3600,
-      }),
-    })
-    const data = await keyRes.json()
-    // Deepgram returns the key as a top-level string: { key: "abc...", api_key_id: "...", ... }
-    const tempKey = typeof data.key === 'string' ? data.key : data.key?.key
-    if (!tempKey) throw new Error('Deepgram key creation failed: ' + JSON.stringify(data))
-    res.json({ key: tempKey })
-  } catch (err) {
-    res.status(500).json({ error: err.message })
-  }
+  res.json({ key: apiKey })
 })
 
 // Proxy endpoint for HeyGen video generation
