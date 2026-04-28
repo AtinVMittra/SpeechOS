@@ -93,7 +93,10 @@ app.get('/api/deepgram/token', async (req, res) => {
       }),
     })
     const data = await keyRes.json()
-    res.json({ key: data.key.key })
+    // Deepgram returns the key as a top-level string: { key: "abc...", api_key_id: "...", ... }
+    const tempKey = typeof data.key === 'string' ? data.key : data.key?.key
+    if (!tempKey) throw new Error('Deepgram key creation failed: ' + JSON.stringify(data))
+    res.json({ key: tempKey })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
