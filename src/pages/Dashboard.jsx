@@ -63,6 +63,7 @@ const TOP_TABS = [
   { id: 'planning', label: 'Session Planning', requiresPatient: false },
   { id: 'session', label: 'Session', requiresPatient: false },
   { id: 'soap', label: 'SOAP', requiresPatient: false },
+  { id: 'generator', label: 'Exercise Plan', requiresPatient: false },
 ]
 
 export default function Dashboard() {
@@ -74,7 +75,7 @@ export default function Dashboard() {
 
   function handleSelectPatient(patient) {
     setSelectedPatientId(patient.id)
-    if (activePanel === 'rag' || activePanel === 'generator') return
+    if (activePanel === 'rag') return
     setActivePanel('brief')
   }
 
@@ -90,7 +91,7 @@ export default function Dashboard() {
         return (
           <div className="flex-1 overflow-y-auto">
             <div className="max-w-2xl mx-auto p-8">
-              <ExercisePlanGenerator selectedPatientId={selectedPatient?.id} />
+              <ExercisePlanGenerator selectedPatientId={selectedPatient?.id} onEnd={() => setActivePanel('brief')} />
             </div>
           </div>
         )
@@ -98,7 +99,7 @@ export default function Dashboard() {
         return (
           <div className="flex-1 overflow-y-auto">
             <div className="max-w-2xl mx-auto p-8">
-              <SessionPlanning patient={selectedPatient} />
+              <SessionPlanning patient={selectedPatient} onNext={() => setActivePanel('session')} />
             </div>
           </div>
         )
@@ -106,7 +107,7 @@ export default function Dashboard() {
         return (
           <div className="flex-1 overflow-y-auto">
             <div className="max-w-3xl mx-auto p-8">
-              <SessionView patient={selectedPatient} />
+              <SessionView patient={selectedPatient} onNext={() => setActivePanel('soap')} />
             </div>
           </div>
         )
@@ -114,7 +115,7 @@ export default function Dashboard() {
         return (
           <div className="flex-1 overflow-y-auto">
             <div className="max-w-2xl mx-auto p-8">
-              <SoapNote patient={selectedPatient} />
+              <SoapNote patient={selectedPatient} onNext={() => setActivePanel('generator')} />
             </div>
           </div>
         )
@@ -136,7 +137,7 @@ export default function Dashboard() {
         return (
           <div className="flex-1 overflow-y-auto">
             <div className="max-w-2xl mx-auto p-8">
-              <PatientBrief patient={selectedPatient} />
+              <PatientBrief patient={selectedPatient} onNext={() => setActivePanel('planning')} />
             </div>
           </div>
         )
@@ -183,17 +184,8 @@ export default function Dashboard() {
             ))}
           </div>
 
-          {/* Bottom actions — Clinical RAG accessible here only */}
-          <div className="p-3 border-t border-slate-100 space-y-2">
-            <button
-              onClick={() => setActivePanel('generator')}
-              className={`w-full flex items-center gap-2 text-sm font-medium px-3 py-2.5 rounded-lg transition-colors ${activePanel === 'generator' ? 'bg-blue-600 text-white' : 'text-blue-600 hover:bg-blue-50 border border-blue-200'}`}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              Exercise Plan Generator
-            </button>
+          {/* Bottom actions */}
+          <div className="p-3 border-t border-slate-100">
             <button
               onClick={() => setActivePanel('rag')}
               className={`w-full flex items-center gap-2 text-sm font-medium px-3 py-2.5 rounded-lg transition-colors ${activePanel === 'rag' ? 'bg-purple-600 text-white' : 'text-purple-600 hover:bg-purple-50 border border-purple-200'}`}
@@ -201,7 +193,7 @@ export default function Dashboard() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Clinical RAG
+              Clinical Questions
             </button>
           </div>
         </aside>

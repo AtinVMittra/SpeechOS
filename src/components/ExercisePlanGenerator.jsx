@@ -52,7 +52,7 @@ function AudioButton({ state, onPress }) {
 const EXAMPLE_NOTE =
   'Patient demonstrated improved /r/ production in isolation and CV syllables. Still inconsistent in words, especially word-final position. Caregiver reports they practice 15 minutes nightly. Recommend continuing isolation practice and introducing /r/ in CVC words. Patient responds well to auditory feedback.'
 
-export default function ExercisePlanGenerator({ selectedPatientId }) {
+export default function ExercisePlanGenerator({ selectedPatientId, onEnd }) {
   const [sessionNote, setSessionNote] = useState('')
   const [exercises, setExercises] = useState(null)
   const [exercisesWithTypes, setExercisesWithTypes] = useState(null)
@@ -128,9 +128,22 @@ export default function ExercisePlanGenerator({ selectedPatientId }) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold text-slate-900">Exercise Plan Generator</h2>
-        <p className="text-sm text-slate-500 mt-1">Paste your session notes and generate a structured 3-exercise home practice plan for the caregiver.</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-slate-900">Exercise Plan Generator</h2>
+          <p className="text-sm text-slate-500 mt-1">Paste your session notes and generate a structured 3-exercise home practice plan for the caregiver.</p>
+        </div>
+        {onEnd && (
+          <button
+            onClick={onEnd}
+            className="inline-flex items-center gap-2 text-sm font-semibold bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-lg transition-colors shrink-0"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            End Encounter
+          </button>
+        )}
       </div>
 
       <div className="space-y-3">
@@ -249,6 +262,7 @@ export default function ExercisePlanGenerator({ selectedPatientId }) {
           )}
         </div>
       )}
+
     </div>
   )
 }

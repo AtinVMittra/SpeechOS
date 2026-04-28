@@ -39,7 +39,7 @@ async function createDailyRoom() {
   return data.url
 }
 
-function DailyVideo() {
+function DailyVideo({ onCallStarted }) {
   const [roomUrl, setRoomUrl] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -50,6 +50,7 @@ function DailyVideo() {
     try {
       const url = await createDailyRoom()
       setRoomUrl(url)
+      onCallStarted?.()
     } catch (err) {
       setError(err.message)
     } finally {
@@ -257,7 +258,7 @@ function useDeepgramScribe() {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function SessionView({ patient }) {
+export default function SessionView({ patient, onNext }) {
   const { saveScribeTranscript, saveSoapNote } = usePatientData()
   const { transcript, isListening, error: scribeError, start, stop, reset, setTranscript } = useDeepgramScribe()
   const [structuring, setStructuring] = useState(false)
@@ -304,15 +305,28 @@ export default function SessionView({ patient }) {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-xl font-semibold text-slate-900">Session</h2>
-        <p className="text-sm text-slate-500 mt-0.5">{patient.name} · Age {patient.age} · {patient.condition}</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-slate-900">Session</h2>
+          <p className="text-sm text-slate-500 mt-0.5">{patient.name} · Age {patient.age} · {patient.condition}</p>
+        </div>
+        {onNext && (
+          <button
+            onClick={onNext}
+            className="inline-flex items-center gap-2 text-sm font-semibold bg-teal-600 hover:bg-teal-700 text-white px-4 py-1.5 rounded-lg transition-colors shrink-0"
+          >
+            Next: SOAP Note
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Video + exercises */}
       <div className="grid grid-cols-5 gap-4">
         <div className="col-span-3">
-          <DailyVideo />
+          <DailyVideo onCallStarted={start} />
         </div>
         <div className="col-span-2 border border-slate-200 rounded-2xl overflow-hidden flex flex-col bg-white" style={{ minHeight: '220px' }}>
           <ExercisePanel exercises={exercises} />

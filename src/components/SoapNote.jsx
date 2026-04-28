@@ -192,7 +192,7 @@ function NoteCard({ note, patientId }) {
   )
 }
 
-export default function SoapNote({ patient }) {
+export default function SoapNote({ patient, onNext }) {
   const notes = patient?.soapNotes || []
 
   if (!patient) {
@@ -216,7 +216,20 @@ export default function SoapNote({ patient }) {
           <h2 className="text-xl font-semibold text-slate-900">SOAP Notes</h2>
           <p className="text-sm text-slate-500 mt-0.5">{patient.name} · Age {patient.age} · {patient.condition}</p>
         </div>
-        <span className="text-xs text-slate-400 bg-slate-100 px-3 py-1 rounded-full">{notes.length} note{notes.length !== 1 ? 's' : ''}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-400 bg-slate-100 px-3 py-1 rounded-full">{notes.length} note{notes.length !== 1 ? 's' : ''}</span>
+          {onNext && (
+            <button
+              onClick={onNext}
+              className="inline-flex items-center gap-2 text-sm font-semibold bg-teal-600 hover:bg-teal-700 text-white px-4 py-1.5 rounded-lg transition-colors"
+            >
+              Next: Exercise Plan
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       {notes.length === 0 ? (
@@ -236,6 +249,7 @@ export default function SoapNote({ patient }) {
           ))}
         </div>
       )}
+
     </div>
   )
 }

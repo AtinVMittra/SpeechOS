@@ -33,7 +33,7 @@ function StatCard({ label, value, icon }) {
   )
 }
 
-export default function PatientBrief({ patient }) {
+export default function PatientBrief({ patient, onNext }) {
   const [brief, setBrief] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -64,16 +64,29 @@ export default function PatientBrief({ patient }) {
           <h2 className="text-xl font-semibold text-slate-900">{patient.name}</h2>
           <p className="text-sm text-slate-500 mt-0.5">{patient.condition} · Age {patient.age}</p>
         </div>
-        <Link
-          to={`/patient/${patient.id}`}
-          target="_blank"
-          className="inline-flex items-center gap-2 text-sm font-medium text-teal-600 hover:text-teal-700 border border-teal-200 hover:border-teal-300 bg-teal-50 hover:bg-teal-100 px-3 py-1.5 rounded-lg transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-          </svg>
-          Patient View
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            to={`/patient/${patient.id}`}
+            target="_blank"
+            className="inline-flex items-center gap-2 text-sm font-medium text-teal-600 hover:text-teal-700 border border-teal-200 hover:border-teal-300 bg-teal-50 hover:bg-teal-100 px-3 py-1.5 rounded-lg transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+            Patient View
+          </Link>
+          {onNext && (
+            <button
+              onClick={onNext}
+              className="inline-flex items-center gap-2 text-sm font-semibold bg-teal-600 hover:bg-teal-700 text-white px-4 py-1.5 rounded-lg transition-colors"
+            >
+              Next: Session Planning
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Session info */}

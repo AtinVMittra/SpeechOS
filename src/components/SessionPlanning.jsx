@@ -73,7 +73,7 @@ function ExerciseCard({ exercise, index }) {
   )
 }
 
-export default function SessionPlanning({ patient }) {
+export default function SessionPlanning({ patient, onNext }) {
   const { saveSessionPlan } = usePatientData()
   const [focus, setFocus] = useState('')
   const [plan, setPlan] = useState(patient?.sessionPlan || null)
@@ -126,9 +126,22 @@ export default function SessionPlanning({ patient }) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold text-slate-900">Session Planning</h2>
-        <p className="text-sm text-slate-500 mt-0.5">{patient.name} · Age {patient.age} · {patient.condition}</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-slate-900">Session Planning</h2>
+          <p className="text-sm text-slate-500 mt-0.5">{patient.name} · Age {patient.age} · {patient.condition}</p>
+        </div>
+        {onNext && (
+          <button
+            onClick={onNext}
+            className="inline-flex items-center gap-2 text-sm font-semibold bg-teal-600 hover:bg-teal-700 text-white px-4 py-1.5 rounded-lg transition-colors shrink-0"
+          >
+            Next: Session
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Focus input */}
@@ -223,6 +236,7 @@ export default function SessionPlanning({ patient }) {
               </div>
             </div>
           )}
+
         </>
       )}
     </div>
